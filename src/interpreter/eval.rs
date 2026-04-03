@@ -1333,6 +1333,187 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                     let end = args.get(1).and_then(|a| a.as_int()).unwrap_or(s.len() as i64) as usize;
                     Value::String(s.chars().skip(start).take(end.saturating_sub(start)).collect())
                 }
+                "find" => {
+                    let sub = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    match s.find(sub) {
+                        Some(i) => Value::Int(i as i64),
+                        None => Value::Nil,
+                    }
+                }
+                "rfind" => {
+                    let sub = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    match s.rfind(sub) {
+                        Some(i) => Value::Int(i as i64),
+                        None => Value::Nil,
+                    }
+                }
+                "count" => {
+                    let sub = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    if sub.is_empty() {
+                        Value::Int(0)
+                    } else {
+                        Value::Int(s.matches(sub).count() as i64)
+                    }
+                }
+                "capitalize" => {
+                    let mut chars = s.chars();
+                    match chars.next() {
+                        None => Value::String(String::new()),
+                        Some(first) => {
+                            let rest: String = chars.collect::<String>().to_lowercase();
+                            Value::String(first.to_uppercase().collect::<String>() + &rest)
+                        }
+                    }
+                }
+                "title" => {
+                    let result: String = s.split_whitespace()
+                        .map(|word| {
+                            let mut chars = word.chars();
+                            match chars.next() {
+                                None => String::new(),
+                                Some(first) => first.to_uppercase().collect::<String>() + &chars.collect::<String>().to_lowercase(),
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    Value::String(result)
+                }
+                "is_empty" => Value::Bool(s.is_empty()),
+                "is_numeric" => Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_ascii_digit())),
+                "is_alpha" => Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_alphabetic())),
+                "is_alphanumeric" => Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_alphanumeric())),
+                "is_whitespace" => Value::Bool(!s.is_empty() && s.chars().all(|c| c.is_whitespace())),
+                "pad_left" => {
+                    let width = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    let pad_char = args.get(1)
+                        .and_then(|a| match a {
+                            Value::String(s) => s.chars().next(),
+                            Value::Char(c) => Some(*c),
+                            _ => None,
+                        })
+                        .unwrap_or(' ');
+                    if s.chars().count() >= width {
+                        Value::String(s.clone())
+                    } else {
+                        let pad_count = width - s.chars().count();
+                        let padding: String = std::iter::repeat(pad_char).take(pad_count).collect();
+                        Value::String(padding + s)
+                    }
+                }
+                "pad_right" => {
+                    let width = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    let pad_char = args.get(1)
+                        .and_then(|a| match a {
+                            Value::String(s) => s.chars().next(),
+                            Value::Char(c) => Some(*c),
+                            _ => None,
+                        })
+                        .unwrap_or(' ');
+                    if s.chars().count() >= width {
+                        Value::String(s.clone())
+                    } else {
+                        let pad_count = width - s.chars().count();
+                        let padding: String = std::iter::repeat(pad_char).take(pad_count).collect();
+                        Value::String(s.clone() + &padding)
+                    }
+                }
+                "center" => {
+                    let width = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    let pad_char = args.get(1)
+                        .and_then(|a| match a {
+                            Value::String(s) => s.chars().next(),
+                            Value::Char(c) => Some(*c),
+                            _ => None,
+                        })
+                        .unwrap_or(' ');
+                    let len = s.chars().count();
+                    if len >= width {
+                        Value::String(s.clone())
+                    } else {
+                        let total_pad = width - len;
+                        let left_pad = total_pad / 2;
+                        let right_pad = total_pad - left_pad;
+                        let left: String = std::iter::repeat(pad_char).take(left_pad).collect();
+                        let right: String = std::iter::repeat(pad_char).take(right_pad).collect();
+                        Value::String(left + s + &right)
+                    }
+                }
+                "remove_prefix" => {
+                    let prefix = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    if s.starts_with(prefix) {
+                        Value::String(s[prefix.len()..].to_string())
+                    } else {
+                        Value::String(s.clone())
+                    }
+                }
+                "remove_suffix" => {
+                    let suffix = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    if s.ends_with(suffix) {
+                        Value::String(s[..s.len() - suffix.len()].to_string())
+                    } else {
+                        Value::String(s.clone())
+                    }
+                }
+                "reverse" => {
+                    Value::String(s.chars().rev().collect())
+                }
+                "split_lines" => {
+                    let parts: Vec<Value> = s.lines().map(|l| Value::String(l.to_string())).collect();
+                    Value::List(Rc::new(RefCell::new(parts)))
+                }
+                "split_whitespace" => {
+                    let parts: Vec<Value> = s.split_whitespace().map(|p| Value::String(p.to_string())).collect();
+                    Value::List(Rc::new(RefCell::new(parts)))
+                }
+                "to_int" => {
+                    match s.parse::<i64>() {
+                        Ok(n) => Value::Ok(Box::new(Value::Int(n))),
+                        Err(_) => Value::Err(Box::new(Value::String("parse error".into()))),
+                    }
+                }
+                "to_float" => {
+                    match s.parse::<f64>() {
+                        Ok(n) => Value::Ok(Box::new(Value::Float(n))),
+                        Err(_) => Value::Err(Box::new(Value::String("parse error".into()))),
+                    }
+                }
+                "char_at" => {
+                    let idx = args.first().and_then(|a| a.as_int()).unwrap_or(-1);
+                    if idx < 0 {
+                        Value::Nil
+                    } else {
+                        match s.chars().nth(idx as usize) {
+                            Some(c) => Value::Char(c),
+                            None => Value::Nil,
+                        }
+                    }
+                }
+                "bytes" => {
+                    let bytes: Vec<Value> = s.bytes().map(|b| Value::Int(b as i64)).collect();
+                    Value::List(Rc::new(RefCell::new(bytes)))
+                }
+                "truncate" => {
+                    let max_len = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    if s.chars().count() <= max_len {
+                        Value::String(s.clone())
+                    } else {
+                        let truncated: String = s.chars().take(max_len).collect();
+                        Value::String(truncated + "...")
+                    }
+                }
+                "matches" => {
+                    let pattern = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    Value::Bool(glob_match(s, pattern))
+                }
+                "insert_at" => {
+                    let idx = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    let insert = args.get(1).and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
+                    let char_count = s.chars().count();
+                    let idx = idx.min(char_count);
+                    let before: String = s.chars().take(idx).collect();
+                    let after: String = s.chars().skip(idx).collect();
+                    Value::String(before + insert + &after)
+                }
                 _ => return Ok(None),
             };
             Ok(Some(result))
@@ -1521,6 +1702,230 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                         .map(|c| Value::List(Rc::new(RefCell::new(c.to_vec()))))
                         .collect();
                     Value::List(Rc::new(RefCell::new(chunks)))
+                }
+                "get" => {
+                    let idx = args.first().and_then(|a| a.as_int()).unwrap_or(-1);
+                    let items = items.borrow();
+                    if idx < 0 || idx as usize >= items.len() {
+                        Value::Nil
+                    } else {
+                        items[idx as usize].clone()
+                    }
+                }
+                "sort_desc" => {
+                    let mut v = items.borrow().clone();
+                    v.sort_by(|a, b| {
+                        let af = a.as_float().unwrap_or(0.0);
+                        let bf = b.as_float().unwrap_or(0.0);
+                        bf.partial_cmp(&af).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    Value::List(Rc::new(RefCell::new(v)))
+                }
+                "find" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut found = Value::Nil;
+                        for item in snapshot.iter() {
+                            let result = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?;
+                            if result.is_truthy() {
+                                found = item.clone();
+                                break;
+                            }
+                        }
+                        found
+                    } else { Value::Nil }
+                }
+                "find_index" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut result = Value::Int(-1);
+                        for (i, item) in snapshot.iter().enumerate() {
+                            let r = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?;
+                            if r.is_truthy() {
+                                result = Value::Int(i as i64);
+                                break;
+                            }
+                        }
+                        result
+                    } else { Value::Int(-1) }
+                }
+                "take" => {
+                    let n = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    let v: Vec<Value> = items.borrow().iter().take(n).cloned().collect();
+                    Value::List(Rc::new(RefCell::new(v)))
+                }
+                "drop" => {
+                    let n = args.first().and_then(|a| a.as_int()).unwrap_or(0) as usize;
+                    let v: Vec<Value> = items.borrow().iter().skip(n).cloned().collect();
+                    Value::List(Rc::new(RefCell::new(v)))
+                }
+                "take_while" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut result = Vec::new();
+                        for item in snapshot.iter() {
+                            let r = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?;
+                            if r.is_truthy() {
+                                result.push(item.clone());
+                            } else {
+                                break;
+                            }
+                        }
+                        Value::List(Rc::new(RefCell::new(result)))
+                    } else { Value::List(Rc::new(RefCell::new(vec![]))) }
+                }
+                "drop_while" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut result = Vec::new();
+                        let mut dropping = true;
+                        for item in snapshot.iter() {
+                            if dropping {
+                                let r = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?;
+                                if !r.is_truthy() {
+                                    dropping = false;
+                                    result.push(item.clone());
+                                }
+                            } else {
+                                result.push(item.clone());
+                            }
+                        }
+                        Value::List(Rc::new(RefCell::new(result)))
+                    } else { Value::List(Rc::new(RefCell::new(items.borrow().clone()))) }
+                }
+                "compact" => {
+                    let v: Vec<Value> = items.borrow().iter()
+                        .filter(|v| !matches!(v, Value::Nil))
+                        .cloned()
+                        .collect();
+                    Value::List(Rc::new(RefCell::new(v)))
+                }
+                "flatten" => {
+                    let mut result = Vec::new();
+                    for item in items.borrow().iter() {
+                        match item {
+                            Value::List(inner) => result.extend(inner.borrow().clone()),
+                            other => result.push(other.clone()),
+                        }
+                    }
+                    Value::List(Rc::new(RefCell::new(result)))
+                }
+                "is_empty" => Value::Bool(items.borrow().is_empty()),
+                "is_sorted" => {
+                    let items = items.borrow();
+                    let sorted = items.windows(2).all(|w| {
+                        let af = w[0].as_float().unwrap_or(0.0);
+                        let bf = w[1].as_float().unwrap_or(0.0);
+                        af <= bf
+                    });
+                    Value::Bool(sorted)
+                }
+                "rotate" => {
+                    let n = args.first().and_then(|a| a.as_int()).unwrap_or(0);
+                    let items = items.borrow();
+                    let len = items.len();
+                    if len == 0 {
+                        Value::List(Rc::new(RefCell::new(vec![])))
+                    } else {
+                        let shift = ((n % len as i64) + len as i64) as usize % len;
+                        let mut v = Vec::with_capacity(len);
+                        v.extend_from_slice(&items[shift..]);
+                        v.extend_from_slice(&items[..shift]);
+                        Value::List(Rc::new(RefCell::new(v)))
+                    }
+                }
+                "interleave" => {
+                    if let Some(Value::List(other)) = args.first() {
+                        let a = items.borrow();
+                        let b = other.borrow();
+                        let len = a.len().max(b.len());
+                        let mut result = Vec::new();
+                        for i in 0..len {
+                            if let Some(v) = a.get(i) { result.push(v.clone()); }
+                            if let Some(v) = b.get(i) { result.push(v.clone()); }
+                        }
+                        Value::List(Rc::new(RefCell::new(result)))
+                    } else { Value::List(Rc::new(RefCell::new(items.borrow().clone()))) }
+                }
+                "mean" => {
+                    let items = items.borrow();
+                    if items.is_empty() {
+                        Value::Nil
+                    } else {
+                        let sum: f64 = items.iter().filter_map(|v| v.as_float()).sum();
+                        let count = items.iter().filter(|v| v.as_float().is_some()).count();
+                        if count == 0 { Value::Nil } else { Value::Float(sum / count as f64) }
+                    }
+                }
+                "median" => {
+                    let items = items.borrow();
+                    let mut nums: Vec<f64> = items.iter().filter_map(|v| v.as_float()).collect();
+                    if nums.is_empty() {
+                        Value::Nil
+                    } else {
+                        nums.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                        let mid = nums.len() / 2;
+                        if nums.len() % 2 == 0 {
+                            Value::Float((nums[mid - 1] + nums[mid]) / 2.0)
+                        } else {
+                            Value::Float(nums[mid])
+                        }
+                    }
+                }
+                "to_set" => {
+                    let items = items.borrow();
+                    let mut seen: Vec<Value> = Vec::new();
+                    for item in items.iter() {
+                        if !seen.iter().any(|s| s.equals(item)) {
+                            seen.push(item.clone());
+                        }
+                    }
+                    Value::Set(Rc::new(RefCell::new(seen)))
+                }
+                "frequencies" => {
+                    let items = items.borrow();
+                    let mut map: HashMap<String, Value> = HashMap::new();
+                    for item in items.iter() {
+                        let key = item.as_map_key().unwrap_or_else(|| item.to_string());
+                        let count = match map.get(&key) {
+                            Some(Value::Int(n)) => *n + 1,
+                            _ => 1,
+                        };
+                        map.insert(key, Value::Int(count));
+                    }
+                    Value::Map(Rc::new(RefCell::new(map)))
+                }
+                "partition" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut matching = Vec::new();
+                        let mut not_matching = Vec::new();
+                        for item in snapshot.iter() {
+                            let r = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?;
+                            if r.is_truthy() {
+                                matching.push(item.clone());
+                            } else {
+                                not_matching.push(item.clone());
+                            }
+                        }
+                        Value::Tuple(vec![
+                            Value::List(Rc::new(RefCell::new(matching))),
+                            Value::List(Rc::new(RefCell::new(not_matching))),
+                        ])
+                    } else { Value::Tuple(vec![Value::List(Rc::new(RefCell::new(vec![]))), Value::List(Rc::new(RefCell::new(items.borrow().clone())))]) }
+                }
+                "window" => {
+                    let n = args.first().and_then(|a| a.as_int()).unwrap_or(1).max(1) as usize;
+                    let items = items.borrow();
+                    let windows: Vec<Value> = items.windows(n)
+                        .map(|w| Value::List(Rc::new(RefCell::new(w.to_vec()))))
+                        .collect();
+                    Value::List(Rc::new(RefCell::new(windows)))
                 }
                 _ => return Ok(None),
             };
@@ -2383,5 +2788,29 @@ fn mutate_individual(
         Ok(Value::Instance(Rc::new(RefCell::new(child))))
     } else {
         Ok(individual.clone())
+    }
+}
+
+/// Simple glob matching supporting `*` (any sequence) and `?` (any single char).
+fn glob_match(text: &str, pattern: &str) -> bool {
+    let text_chars: Vec<char> = text.chars().collect();
+    let pat_chars: Vec<char> = pattern.chars().collect();
+    glob_match_inner(&text_chars, &pat_chars)
+}
+
+fn glob_match_inner(text: &[char], pattern: &[char]) -> bool {
+    match (text, pattern) {
+        (_, []) => text.is_empty(),
+        ([], [p, rest @ ..]) => *p == '*' && glob_match_inner(&[], rest),
+        ([_, t_rest @ ..], ['*', p_rest @ ..]) => {
+            glob_match_inner(t_rest, pattern) || glob_match_inner(text, p_rest)
+        }
+        ([t, t_rest @ ..], ['?', p_rest @ ..]) => {
+            let _ = t;
+            glob_match_inner(t_rest, p_rest)
+        }
+        ([t, t_rest @ ..], [p, p_rest @ ..]) => {
+            t == p && glob_match_inner(t_rest, p_rest)
+        }
     }
 }
