@@ -8,6 +8,22 @@ pub mod net;
 pub mod json;
 pub mod time;
 pub mod tensor;
+pub mod random;
+pub mod regex_mod;
+pub mod fs;
+pub mod crypto;
+pub mod encoding;
+pub mod uuid_mod;
+pub mod process;
+pub mod log;
+pub mod http;
+pub mod term;
+pub mod csv_mod;
+pub mod collections;
+pub mod iter_mod;
+pub mod math_extended;
+pub mod time_extended;
+pub mod json_extended;
 
 use crate::interpreter::environment::Environment;
 
@@ -21,4 +37,20 @@ pub fn register_all(env: &mut Environment) {
     list::register_list_methods(env);
     json::register_json(env);
     tensor::register_tensor(env);
+    random::register(env);
+    regex_mod::register(env);
+    fs::register(env);
+    crypto::register(env);
+    encoding::register(env);
+    uuid_mod::register(env);
+    process::register(env);
+    log::register(env);
+    http::register(env);
+    term::register(env);
+    csv_mod::register(env);
+    collections::register(env);
+    iter_mod::register(env);
+    math_extended::register(env);
+    time_extended::register(env);
+    json_extended::register(env);
 }

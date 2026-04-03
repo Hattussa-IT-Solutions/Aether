@@ -1,0 +1,107 @@
+// ═══════════════════════════════════════════════════
+// Aether Standard Library Demo
+// Zero installs. Zero pip. Just "use".
+// ═══════════════════════════════════════════════════
+
+print("=== Math ===")
+print("sqrt(144) =", sqrt(144.0))
+print("PI =", PI)
+print("gcd(12, 8) =", math_gcd(12, 8))
+print("lcm(4, 6) =", math_lcm(4, 6))
+print("factorial(10) =", math_factorial(10))
+print("fib(20) =", math_fib(20))
+print("is_prime(97) =", math_is_prime(97))
+print("lerp(0, 100, 0.5) =", math_lerp(0.0, 100.0, 0.5))
+
+print("\n=== Random ===")
+print("random int:", random_int(1, 100))
+print("random float:", random_float())
+print("random bool:", random_bool())
+print("random uuid:", random_uuid())
+print("random hex:", random_hex(16))
+print("random choice:", random_choice(["apple", "banana", "cherry"]))
+
+print("\n=== Regex ===")
+print("match phone:", regex_match("\\d{3}-\\d{4}", "555-1234"))
+print("find emails:", regex_find_all("\\w+@\\w+\\.\\w+", "alice@test.com and bob@example.com"))
+print("replace:", regex_replace_all("\\d+", "abc123def456", "NUM"))
+
+print("\n=== Crypto ===")
+print("SHA256:", crypto_sha256("Hello Aether"))
+print("MD5:", crypto_md5("Hello"))
+
+print("\n=== Encoding ===")
+encoded = base64_encode("Hello World")
+print("Base64 encode:", encoded)
+print("Base64 decode:", base64_decode(encoded))
+print("Hex encode:", hex_encode("Hi"))
+
+print("\n=== UUID ===")
+id = uuid_v4()
+print("UUID:", id)
+print("Valid:", uuid_is_valid(id))
+
+print("\n=== Time ===")
+print("Date:", time_date_str())
+print("Time:", time_datetime_str())
+print("Year:", time_year())
+print("Weekday:", time_weekday())
+start = time_measure_start()
+time_sleep(0.05)
+elapsed = time_measure_end(start)
+print("Elapsed:", elapsed, "ms")
+
+print("\n=== JSON ===")
+data = json_encode({"name": "Aether", "version": 1})
+print("JSON:", data)
+print("Pretty:", json_pretty({"a": 1, "b": [2, 3]}))
+
+print("\n=== File System ===")
+fs_write("/tmp/aether_test.txt", "Hello from Aether stdlib!")
+print("Read:", fs_read("/tmp/aether_test.txt"))
+print("Exists:", fs_exists("/tmp/aether_test.txt"))
+print("Size:", fs_size("/tmp/aether_test.txt"))
+print("Is file:", fs_is_file("/tmp/aether_test.txt"))
+print("CWD:", fs_cwd())
+print("Temp dir:", fs_temp_dir())
+fs_delete("/tmp/aether_test.txt")
+
+print("\n=== Process ===")
+result = process_exec("echo hello-from-shell")
+print("Shell:", result)
+print("Platform:", sys_platform())
+print("Arch:", sys_arch())
+
+print("\n=== Terminal Colors ===")
+print(term_color("Red text", "red"))
+print(term_color("Green text", "green"))
+print(term_bold(term_color("Bold blue", "blue")))
+print(term_underline("Underlined"))
+term_progress(75, 100, "Loading")
+
+print("\n=== Collections ===")
+c = counter(["a", "b", "a", "c", "a", "b"])
+print("Counter:", c)
+print("Most common:", counter_most_common(c, 2))
+
+print("\n=== Iteration ===")
+print("Chain:", iter_chain([1, 2], [3, 4]))
+print("Flatten:", iter_flatten([[1, 2], [3, 4], [5]]))
+print("Repeat:", iter_repeat("x", 5))
+print("Window:", iter_window([1, 2, 3, 4, 5], 3))
+
+print("\n=== CSV ===")
+csv_text = "name,age\nAlice,30\nBob,25"
+rows = csv_parse(csv_text)
+print("CSV rows:", rows)
+
+print("\n=== Math Extended ===")
+print("sinh(1) =", math_sinh(1.0))
+print("deg_to_rad(180) =", math_deg_to_rad(180.0))
+print("round_to(3.14159, 2) =", math_round_to(3.14159, 2))
+
+print("\n=== Logging ===")
+log_info("Standard library demo complete!")
+log_warn("This is a warning")
+
+print("\nDone! All 16 modules working.")

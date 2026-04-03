@@ -29,14 +29,20 @@ fn main() {
     match args[1].as_str() {
         "run" => {
             if args.len() < 3 {
-                eprintln!("Usage: aether run <file.ae>");
-                process::exit(1);
-            }
-            let use_vm = args.iter().any(|a| a == "--vm");
-            if use_vm {
-                run_file_vm(&args[2]);
+                // If aether.toml exists, run src/main.ae
+                if std::path::Path::new("aether.toml").exists() && std::path::Path::new("src/main.ae").exists() {
+                    run_file("src/main.ae");
+                } else {
+                    eprintln!("Usage: aether run <file.ae>");
+                    process::exit(1);
+                }
             } else {
-                run_file(&args[2]);
+                let use_vm = args.iter().any(|a| a == "--vm");
+                if use_vm {
+                    run_file_vm(&args[2]);
+                } else {
+                    run_file(&args[2]);
+                }
             }
         }
         "repl" => {
@@ -49,6 +55,52 @@ fn main() {
             }
             if let Err(e) = forge::create_project(&args[2]) {
                 eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "init" => {
+            if let Err(e) = forge::init_project() {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "add" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether add <package>[@version]");
+                process::exit(1);
+            }
+            let dev = args.iter().any(|a| a == "--dev");
+            let pkg = args.iter().find(|a| !a.starts_with('-') && *a != "add").unwrap();
+            if let Err(e) = forge::add_dependency(pkg, dev) {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "remove" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether remove <package>");
+                process::exit(1);
+            }
+            if let Err(e) = forge::remove_dependency(&args[2]) {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "install" => {
+            if let Err(e) = forge::install_deps() {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "list" => {
+            if let Err(e) = forge::list_dependencies() {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "build" => {
+            if let Err(e) = forge::build_project() {
+                eprintln!("{}", e);
                 process::exit(1);
             }
         }
@@ -65,6 +117,16 @@ fn main() {
                 process::exit(1);
             }
             check_file(&args[2]);
+        }
+        "fmt" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether fmt <file.ae>");
+                process::exit(1);
+            }
+            if let Err(e) = forge::format_file(&args[2]) {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
         }
         "jit" => {
             if args.len() < 3 {
@@ -222,12 +284,27 @@ fn print_usage() {
     eprintln!();
     eprintln!("Usage: aether <command> [args]");
     eprintln!();
-    eprintln!("Commands:");
-    eprintln!("  run <file.ae>      Run an Aether source file");
+    eprintln!("Run & Execute:");
+    eprintln!("  run [file.ae]      Run a source file (or src/main.ae if in project)");
+    eprintln!("  run file.ae --vm   Run using bytecode VM");
+    eprintln!("  jit <file.ae>      Compile and run via Cranelift JIT");
     eprintln!("  repl               Start interactive REPL");
+    eprintln!();
+    eprintln!("Project Management (Forge):");
     eprintln!("  new <name>         Create a new project");
+    eprintln!("  init               Initialize aether.toml in current directory");
+    eprintln!("  add <pkg>          Add a dependency (use @version for specific)");
+    eprintln!("  add --dev <pkg>    Add a dev dependency");
+    eprintln!("  remove <pkg>       Remove a dependency");
+    eprintln!("  install            Install all dependencies");
+    eprintln!("  list               List dependencies");
+    eprintln!("  build              Parse and type-check project");
     eprintln!("  test [dir]         Run test files");
+    eprintln!("  fmt <file.ae>      Format source code");
+    eprintln!();
+    eprintln!("Tools:");
     eprintln!("  check <file.ae>    Type-check a file");
+    eprintln!("  lsp                Start Language Server (for editors)");
     eprintln!("  --version          Print version");
     eprintln!("  --help             Show this help");
 }
