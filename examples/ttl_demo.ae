@@ -1,0 +1,32 @@
+print("=== TTL Variables ===")
+ttl_set("token", "secret_abc123", 3.0)
+print("Token:", ttl_get("token"))
+print("Alive:", ttl_alive("token"))
+print("Remaining:", ttl_remaining("token"), "seconds")
+
+time_sleep(1.0)
+print("After 1s - Alive:", ttl_alive("token"))
+print("Remaining:", ttl_remaining("token"))
+
+ttl_refresh("token")
+print("After refresh - Remaining:", ttl_remaining("token"))
+
+time_sleep(4.0)
+print("After 4s - Alive:", ttl_alive("token"))
+print("Token:", ttl_get("token"))
+
+print("\n=== TTL Map ===")
+tm = ttl_map_new()
+ttl_map_set(tm, "key1", "value1", 5.0)
+ttl_map_set(tm, "key2", "value2", 1.0)
+print("key1:", ttl_map_get(tm, "key1"))
+print("key2:", ttl_map_get(tm, "key2"))
+print("Live entries:", ttl_map_len(tm))
+
+time_sleep(2.0)
+print("After 2s:")
+print("key1:", ttl_map_get(tm, "key1"))
+print("key2:", ttl_map_get(tm, "key2"))
+print("Live entries:", ttl_map_len(tm))
+
+print("Done!")

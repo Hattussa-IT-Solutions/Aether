@@ -1,0 +1,23 @@
+print("=== Atomic Counter ===")
+counter = atomic_new(0)
+print("Initial:", atomic_get(counter))
+atomic_add(counter, 10)
+print("After +10:", atomic_get(counter))
+atomic_add(counter, 5)
+print("After +5:", atomic_get(counter))
+
+print("\n=== Channel ===")
+ch = channel_new(5)
+channel_send(ch, 42)
+channel_send(ch, "hello")
+channel_send(ch, [1, 2, 3])
+v1 = channel_receive(ch)
+v2 = channel_receive(ch)
+print("Received:", v1, v2)
+
+print("\n=== Mutex ===")
+m = mutex_new(0)
+mutex_lock_set(m, 42)
+print("Mutex value:", mutex_lock_get(m))
+
+print("Done!")

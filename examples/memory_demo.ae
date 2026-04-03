@@ -1,0 +1,10 @@
+print("=== Memory Info ===")
+print("Memory used:", memory_used(), "bytes")
+print("Peak memory:", memory_peak(), "bytes")
+big = []
+for i in 0..10000 { big.push(i) }
+print("After 10K list:", memory_used(), "bytes")
+big = nil
+memory_gc()
+print("After cleanup:", memory_used(), "bytes")
+print("Done!")

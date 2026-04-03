@@ -31,6 +31,9 @@ pub mod json_extended;
 pub mod math_advanced;
 pub mod data;
 pub mod viz;
+pub mod concurrency;
+pub mod ttl_mod;
+pub mod memory;
 
 use crate::interpreter::environment::Environment;
 
@@ -67,4 +70,7 @@ pub fn register_all(env: &mut Environment) {
     math_advanced::register(env);
     data::register(env);
     viz::register(env);
+    concurrency::register(env);
+    ttl_mod::register(env);
+    memory::register(env);
 }
