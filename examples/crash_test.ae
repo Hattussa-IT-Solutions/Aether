@@ -1,0 +1,35 @@
+print("=== Crash Test Suite ===")
+// Empty collections
+a = []
+print(a.len())
+print(a.is_empty())
+// String edge cases
+s = ""
+print(s.len())
+print(s.upper())
+print(s.is_empty())
+emoji = "Hello 🌍🎉"
+print(emoji.len())
+print(emoji.contains("🌍"))
+// Large strings
+big = "x".repeat(100000)
+print(big.len())
+// Unicode
+print("你好".len())
+print("مرحبا".upper())
+// Nil safety
+x = nil ?? "default"
+print(x)
+// Error handling
+try { throw "test error" } catch any as e { print("caught:", e) }
+// Math edge cases
+print(abs(-42))
+print(sqrt(0.0))
+// Collections
+m = {}
+print(m.len())
+print(m.is_empty())
+s = {1, 2, 3}
+print(s.len())
+print(s.contains(2))
+print("All crash tests passed!")

@@ -53,7 +53,13 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
                 }
             }
             env.get(name).ok_or_else(|| {
-                Signal::Throw(Value::String(format!("undefined variable: {}", name)))
+                let available: Vec<String> = env.all_named_values().into_iter().map(|(n, _)| n).collect();
+                let suggestion = crate::diagnostics::suggestions::suggest_variable(name, &available);
+                let msg = match suggestion {
+                    Some(s) => format!("undefined variable: {}. Did you mean '{}'?", name, s),
+                    None => format!("undefined variable: {}", name),
+                };
+                Signal::Throw(Value::String(msg))
             })
         }
         ExprKind::SelfExpr => {
@@ -1927,6 +1933,166 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                         .collect();
                     Value::List(Rc::new(RefCell::new(windows)))
                 }
+                "count" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut count = 0i64;
+                        for item in snapshot.iter() {
+                            let r = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?;
+                            if r.is_truthy() { count += 1; }
+                        }
+                        Value::Int(count)
+                    } else { Value::Int(items.borrow().len() as i64) }
+                }
+                "sort_by" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let mut v = items.borrow().clone();
+                        let mut keys: Vec<f64> = v.iter().map(|item| {
+                            call_function(&func, vec![item.clone()], &[], &mut Environment::new())
+                                .ok().and_then(|k| k.as_float()).unwrap_or(0.0)
+                        }).collect();
+                        // Sort v by keys
+                        let mut indexed: Vec<(usize, f64)> = keys.iter().cloned().enumerate().collect();
+                        indexed.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+                        let sorted: Vec<Value> = indexed.iter().map(|(i, _)| v[*i].clone()).collect();
+                        let _ = keys; // suppress warning
+                        Value::List(Rc::new(RefCell::new(sorted)))
+                    } else { Value::List(Rc::new(RefCell::new(items.borrow().clone()))) }
+                }
+                "map_indexed" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut result = Vec::new();
+                        for (i, item) in snapshot.iter().enumerate() {
+                            let r = call_function(&func, vec![Value::Int(i as i64), item.clone()], &[], &mut Environment::new())?;
+                            result.push(r);
+                        }
+                        Value::List(Rc::new(RefCell::new(result)))
+                    } else { Value::Nil }
+                }
+                "dedup" => {
+                    let snapshot: Vec<Value> = items.borrow().clone();
+                    let mut result: Vec<Value> = Vec::new();
+                    for item in snapshot.iter() {
+                        if result.last().map(|last| !last.equals(item)).unwrap_or(true) {
+                            result.push(item.clone());
+                        }
+                    }
+                    Value::List(Rc::new(RefCell::new(result)))
+                }
+                "scan" => {
+                    if args.len() >= 2 {
+                        let init = args[0].clone();
+                        let func = args[1].clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut acc = init;
+                        let mut result = vec![acc.clone()];
+                        for item in snapshot.iter() {
+                            acc = call_function(&func, vec![acc, item.clone()], &[], &mut Environment::new())?;
+                            result.push(acc.clone());
+                        }
+                        Value::List(Rc::new(RefCell::new(result)))
+                    } else { Value::Nil }
+                }
+                "min_by" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut best: Option<(f64, Value)> = None;
+                        for item in snapshot.iter() {
+                            let key = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?
+                                .as_float().unwrap_or(f64::MAX);
+                            match best {
+                                None => { best = Some((key, item.clone())); }
+                                Some((best_key, _)) if key < best_key => { best = Some((key, item.clone())); }
+                                _ => {}
+                            }
+                        }
+                        best.map(|(_, v)| v).unwrap_or(Value::Nil)
+                    } else { Value::Nil }
+                }
+                "max_by" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let snapshot: Vec<Value> = items.borrow().clone();
+                        let mut best: Option<(f64, Value)> = None;
+                        for item in snapshot.iter() {
+                            let key = call_function(&func, vec![item.clone()], &[], &mut Environment::new())?
+                                .as_float().unwrap_or(f64::MIN);
+                            match best {
+                                None => { best = Some((key, item.clone())); }
+                                Some((best_key, _)) if key > best_key => { best = Some((key, item.clone())); }
+                                _ => {}
+                            }
+                        }
+                        best.map(|(_, v)| v).unwrap_or(Value::Nil)
+                    } else { Value::Nil }
+                }
+                "concat" => {
+                    if let Some(Value::List(other)) = args.first() {
+                        let mut result = items.borrow().clone();
+                        result.extend(other.borrow().clone());
+                        Value::List(Rc::new(RefCell::new(result)))
+                    } else { Value::List(Rc::new(RefCell::new(items.borrow().clone()))) }
+                }
+                "zip_with" => {
+                    if args.len() >= 2 {
+                        if let Some(Value::List(other)) = args.first() {
+                            let func = args[1].clone();
+                            let a = items.borrow();
+                            let b = other.borrow();
+                            let mut result = Vec::new();
+                            for (x, y) in a.iter().zip(b.iter()) {
+                                let r = call_function(&func, vec![x.clone(), y.clone()], &[], &mut Environment::new())?;
+                                result.push(r);
+                            }
+                            Value::List(Rc::new(RefCell::new(result)))
+                        } else { Value::Nil }
+                    } else { Value::Nil }
+                }
+                "to_map" => {
+                    let mut result = HashMap::new();
+                    for item in items.borrow().iter() {
+                        match item {
+                            Value::List(pair) => {
+                                let pair = pair.borrow();
+                                if pair.len() >= 2 {
+                                    if let Some(key) = pair[0].as_map_key() {
+                                        result.insert(key, pair[1].clone());
+                                    }
+                                }
+                            }
+                            Value::Tuple(pair) => {
+                                if pair.len() >= 2 {
+                                    if let Some(key) = pair[0].as_map_key() {
+                                        result.insert(key, pair[1].clone());
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    Value::Map(Rc::new(RefCell::new(result)))
+                }
+                "slice" => {
+                    let start = args.first().and_then(|a| a.as_int()).unwrap_or(0);
+                    let items = items.borrow();
+                    let len = items.len() as i64;
+                    let start = if start < 0 { (len + start).max(0) } else { start.min(len) } as usize;
+                    let end = args.get(1).and_then(|a| a.as_int()).unwrap_or(len);
+                    let end = if end < 0 { (len + end).max(0) } else { end.min(len) } as usize;
+                    let v: Vec<Value> = items[start.min(end)..end.max(start).min(items.len())].to_vec();
+                    Value::List(Rc::new(RefCell::new(v)))
+                }
+                "enumerate" => {
+                    let result: Vec<Value> = items.borrow().iter().enumerate()
+                        .map(|(i, v)| Value::List(Rc::new(RefCell::new(vec![Value::Int(i as i64), v.clone()]))))
+                        .collect();
+                    Value::List(Rc::new(RefCell::new(result)))
+                }
                 _ => return Ok(None),
             };
             Ok(Some(result))
@@ -1965,6 +2131,60 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                         Value::Tuple(vec![Value::String(k.clone()), v.clone()])
                     }).collect();
                     Value::List(Rc::new(RefCell::new(entries)))
+                }
+                "get_or" => {
+                    let key = args.first().and_then(|a| a.as_map_key()).unwrap_or_default();
+                    let default = args.get(1).cloned().unwrap_or(Value::Nil);
+                    map.borrow().get(&key).cloned().unwrap_or(default)
+                }
+                "merge" => {
+                    if let Some(Value::Map(other)) = args.first() {
+                        let mut result = map.borrow().clone();
+                        for (k, v) in other.borrow().iter() {
+                            result.insert(k.clone(), v.clone());
+                        }
+                        Value::Map(Rc::new(RefCell::new(result)))
+                    } else { Value::Map(Rc::new(RefCell::new(map.borrow().clone()))) }
+                }
+                "filter_keys" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let mut result = HashMap::new();
+                        for (k, v) in map.borrow().iter() {
+                            let keep = call_function(&func, vec![Value::String(k.clone())], &[], &mut Environment::new())?;
+                            if keep.is_truthy() {
+                                result.insert(k.clone(), v.clone());
+                            }
+                        }
+                        Value::Map(Rc::new(RefCell::new(result)))
+                    } else { Value::Map(Rc::new(RefCell::new(map.borrow().clone()))) }
+                }
+                "map_values" => {
+                    if let Some(func) = args.first() {
+                        let func = func.clone();
+                        let mut result = HashMap::new();
+                        for (k, v) in map.borrow().iter() {
+                            let new_val = call_function(&func, vec![v.clone()], &[], &mut Environment::new())?;
+                            result.insert(k.clone(), new_val);
+                        }
+                        Value::Map(Rc::new(RefCell::new(result)))
+                    } else { Value::Map(Rc::new(RefCell::new(map.borrow().clone()))) }
+                }
+                "is_empty" => Value::Bool(map.borrow().is_empty()),
+                "to_list" => {
+                    let entries: Vec<Value> = map.borrow().iter().map(|(k, v)| {
+                        Value::List(Rc::new(RefCell::new(vec![Value::String(k.clone()), v.clone()])))
+                    }).collect();
+                    Value::List(Rc::new(RefCell::new(entries)))
+                }
+                "invert" => {
+                    let mut result = HashMap::new();
+                    for (k, v) in map.borrow().iter() {
+                        if let Some(new_key) = v.as_map_key() {
+                            result.insert(new_key, Value::String(k.clone()));
+                        }
+                    }
+                    Value::Map(Rc::new(RefCell::new(result)))
                 }
                 _ => return Ok(None),
             };
@@ -2021,6 +2241,33 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                             .cloned().collect();
                         Value::Set(Rc::new(RefCell::new(result)))
                     } else { Value::Nil }
+                }
+                "is_empty" => Value::Bool(items.borrow().is_empty()),
+                "is_subset" => {
+                    if let Some(Value::Set(other)) = args.first() {
+                        let other = other.borrow();
+                        let result = items.borrow().iter().all(|v| other.iter().any(|o| o.equals(v)));
+                        Value::Bool(result)
+                    } else { Value::Bool(false) }
+                }
+                "is_superset" => {
+                    if let Some(Value::Set(other)) = args.first() {
+                        let other_borrow = other.borrow();
+                        let result = other_borrow.iter().all(|v| items.borrow().iter().any(|s| s.equals(v)));
+                        Value::Bool(result)
+                    } else { Value::Bool(false) }
+                }
+                "to_list" => {
+                    Value::List(Rc::new(RefCell::new(items.borrow().clone())))
+                }
+                "add" => {
+                    if let Some(val) = args.first() {
+                        let mut items = items.borrow_mut();
+                        if !items.iter().any(|v| v.equals(val)) {
+                            items.push(val.clone());
+                        }
+                    }
+                    Value::Nil
                 }
                 _ => return Ok(None),
             };

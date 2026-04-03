@@ -1,0 +1,51 @@
+// ═══════════════════════════════════════════════════
+// Aether Data Analyzer — CSV analysis in ~30 lines
+// ═══════════════════════════════════════════════════
+
+print("=== Aether Data Analyzer ===\n")
+
+// Create sample dataset
+csv = "name,department,salary,years\nAlice,Engineering,95000,5\nBob,Marketing,72000,3\nCharlie,Engineering,105000,8\nDiana,Sales,68000,2\nEve,Engineering,88000,4\nFrank,Marketing,75000,6\nGrace,Sales,71000,3\nHenry,Engineering,112000,10\nIris,Marketing,78000,5\nJack,Sales,65000,1"
+
+// Load and display
+df = data_from_csv(csv)
+print("Raw data:")
+data_print(df)
+
+// Statistics
+print("\nStatistics:")
+data_describe(df)
+
+// Filter: high earners
+print("\nHigh earners (salary > 80000):")
+high = data_where(df, "salary", ">", 80000)
+data_print(high)
+
+// Department breakdown
+print("\nDepartment distribution:")
+data_print(data_value_counts(df, "department"))
+
+// Sort by salary
+print("\nTop earners:")
+sorted = data_sort_by(df, "salary", true)
+top3 = data_top(sorted, 3)
+data_print(top3)
+
+// Column analysis
+salaries = data_column(df, "salary")
+print("\nSalary analysis:")
+print("  Mean:", stats_mean(salaries))
+print("  Median:", stats_median(salaries))
+print("  Std dev:", stats_std(salaries))
+print("  Min:", salaries.min())
+print("  Max:", salaries.max())
+
+// Visualization
+print("\nSalary distribution:")
+viz_bar(
+    data_column(data_sort_by(df, "salary", true), "name"),
+    data_column(data_sort_by(df, "salary", true), "salary"),
+    "Salary by Employee"
+)
+
+print("\nDone!")

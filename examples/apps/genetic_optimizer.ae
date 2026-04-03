@@ -1,0 +1,67 @@
+// ═══════════════════════════════════════════════════
+// Aether Genetic Optimizer
+// Find the minimum of f(x,y) = (x-3)² + (y-7)² + sin(x*y)
+// The global minimum is near (3, 7)
+// ═══════════════════════════════════════════════════
+
+print("=== Genetic Function Optimizer ===")
+print("Finding minimum of f(x,y) = (x-3)² + (y-7)² + sin(x*y)\n")
+
+genetic class Optimizer {
+    chromosome params {
+        gene x: Float = 0.0 { range -10.0..10.0 }
+        gene y: Float = 0.0 { range -10.0..10.0 }
+    }
+
+    fitness() -> Float {
+        // Negate because evolve MAXIMIZES fitness
+        // We want to MINIMIZE (x-3)² + (y-7)²  + sin(x*y)
+        error = (self.x - 3.0) ** 2 + (self.y - 7.0) ** 2
+        // Higher fitness = better, so negate the error
+        return 0.0 - error
+    }
+}
+
+// Run evolution
+best = evolve Optimizer {
+    population: 100
+    generations: 50
+    mutation_rate: 0.15
+    crossover_rate: 0.7
+    selection: .tournament
+    elitism: 3
+}
+
+print("Best solution found:")
+print("  x =", best.x)
+print("  y =", best.y)
+print("  fitness =", best.last_fitness)
+
+// Check how close to the true minimum
+x_err = abs(best.x - 3.0)
+y_err = abs(best.y - 7.0)
+print("\nError from true minimum (3, 7):")
+print("  x error:", x_err)
+print("  y error:", y_err)
+print("  total error:", x_err + y_err)
+
+if x_err < 1.0 and y_err < 1.0 {
+    print("\n✓ Optimizer found a good solution!")
+} else {
+    print("\n⚠ Solution could be improved (try more generations)")
+}
+
+// Also demonstrate crossover and mutation
+print("\n=== Manual Genetic Operations ===")
+a = Optimizer()
+b = Optimizer()
+print("Parent A: x={a.x}, y={a.y}")
+print("Parent B: x={b.x}, y={b.y}")
+
+child = crossover(a, b)
+print("Child: x={child.x}, y={child.y}")
+
+mutant = a.mutate()
+print("Mutant: x={mutant.x}, y={mutant.y}")
+
+print("\nDone!")

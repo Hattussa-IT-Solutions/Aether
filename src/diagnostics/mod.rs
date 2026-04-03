@@ -1,3 +1,5 @@
+pub mod suggestions;
+
 use crate::types::checker::TypeError;
 
 /// Format a type error with source context for display.

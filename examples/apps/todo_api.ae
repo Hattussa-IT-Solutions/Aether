@@ -1,0 +1,77 @@
+// ═══════════════════════════════════════════════════
+// Aether Todo API — Complete REST API in ~40 lines
+// Start: aether run examples/apps/todo_api.ae
+// Test: curl localhost:8080/todos
+// ═══════════════════════════════════════════════════
+
+todos = []
+next_id = 1
+
+def find_todo(id) {
+    for todo in todos {
+        if todo["id"] == id { return todo }
+    }
+    return nil
+}
+
+print("Todo API running on http://localhost:8080")
+print("  POST /todos          — create todo")
+print("  GET  /todos          — list all")
+print("  GET  /todos/:id      — get one")
+print("  DELETE /todos/:id    — delete")
+
+http_serve(8080, def(req) {
+    path = req["path"]
+    method = req["method"]
+
+    // POST /todos — create
+    if method == "POST" and path == "/todos" {
+        body = json_decode(req["body"])
+        todo = {"id": next_id, "title": body["title"], "done": false}
+        todos.push(todo)
+        next_id += 1
+        return {"status": 201, "body": json_encode(todo), "content_type": "application/json"}
+    }
+
+    // GET /todos — list all
+    if method == "GET" and path == "/todos" {
+        return {"status": 200, "body": json_encode(todos), "content_type": "application/json"}
+    }
+
+    // GET /todos/:id
+    if method == "GET" and path.starts_with("/todos/") {
+        id = path.slice(7, path.len()).to_int()
+        match id {
+            Ok(n) -> {
+                todo = find_todo(n)
+                if todo != nil {
+                    return {"status": 200, "body": json_encode(todo), "content_type": "application/json"}
+                }
+                return {"status": 404, "body": json_encode({"error": "not found"})}
+            }
+            Err(e) -> return {"status": 400, "body": json_encode({"error": "invalid id"})}
+        }
+    }
+
+    // DELETE /todos/:id
+    if method == "DELETE" and path.starts_with("/todos/") {
+        id = path.slice(7, path.len()).to_int()
+        match id {
+            Ok(n) -> {
+                before = todos.len()
+                new_todos = []
+                for t in todos {
+                    if t["id"] != n { new_todos.push(t) }
+                }
+                todos = new_todos
+                if new_todos.len() < before {
+                    return {"status": 200, "body": json_encode({"deleted": n})}
+                }
+                return {"status": 404, "body": json_encode({"error": "not found"})}
+            }
+            Err(e) -> return {"status": 400, "body": json_encode({"error": "invalid id"})}
+        }
+    }
+
+    return {"status": 404, "body": json_encode({"error": "not found"})}
+})
