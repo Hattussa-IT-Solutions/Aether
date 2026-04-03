@@ -1,0 +1,85 @@
+// debug_demo.ae — Demo program for the Aether CLI debugger.
+// Try: aether debug examples/debug_demo.ae
+//
+// Suggested walkthrough:
+//   (adb) b 12      — set breakpoint at factorial call
+//   (adb) r         — run to that breakpoint
+//   (adb) p n       — print the value of n
+//   (adb) locals    — show all variables
+//   (adb) n         — step to next statement
+//   (adb) q         — quit
+
+// ── Factorial ────────────────────────────────────────────────────────────────
+def factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+result = factorial(6)
+print("6! =", result)
+
+// ── Fibonacci ────────────────────────────────────────────────────────────────
+def fib(n) {
+    if n <= 1 {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+
+print("fib(10) =", fib(10))
+
+// ── Loop with accumulator ────────────────────────────────────────────────────
+total = 0
+for i in 1..11 {
+    total += i
+}
+print("Sum 1..10 =", total)
+
+// ── List comprehension ───────────────────────────────────────────────────────
+squares = [x * x for x in 1..8]
+print("Squares:", squares)
+
+// ── Nested function calls ────────────────────────────────────────────────────
+def is_prime(n) {
+    if n < 2 {
+        return false
+    }
+    i = 2
+    loop while i * i <= n {
+        if n % i == 0 {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+primes = [n for n in 2..30 if is_prime(n)]
+print("Primes < 30:", primes)
+
+// ── Simple class ─────────────────────────────────────────────────────────────
+class Counter {
+    value: Int = 0
+
+    init(start) {
+        self.value = start
+    }
+
+    def increment() {
+        self.value += 1
+    }
+
+    def get() {
+        return self.value
+    }
+}
+
+c = Counter(0)
+c.increment()
+c.increment()
+c.increment()
+print("Counter:", c.get())
+
+print("Done!")

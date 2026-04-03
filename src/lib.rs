@@ -13,3 +13,5 @@ pub mod diagnostics;
 pub mod forge;
 pub mod lsp;
 pub mod dap;
+pub mod debugger;
+pub mod watcher;

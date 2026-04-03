@@ -1,0 +1,12 @@
+// HTTP Client Demo
+// Uses the built-in http module (no pip install requests needed!)
+
+res = http_get("https://httpbin.org/get")
+print("Status:", res["status"])
+print("Body preview:", res["body"].slice(0, 100))
+
+// POST
+res2 = http_post("https://httpbin.org/post", json_encode({"language": "Aether"}))
+print("POST status:", res2["status"])
+
+print("Done!")

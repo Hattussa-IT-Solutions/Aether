@@ -1,0 +1,8 @@
+print("TCP Echo server on :4000")
+listener = tcp_listen("127.0.0.1:4000")
+print("Listening...")
+conn = tcp_accept(listener)
+data = tcp_read(conn, 1024)
+print("Received:", data)
+tcp_write(conn, "Echo: " + data)
+tcp_close(conn)

@@ -17,6 +17,8 @@ mod diagnostics;
 mod forge;
 mod lsp;
 mod dap;
+mod debugger;
+mod watcher;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -38,7 +40,10 @@ fn main() {
                 }
             } else {
                 let use_vm = args.iter().any(|a| a == "--vm");
-                if use_vm {
+                let use_watch = args.iter().any(|a| a == "--watch");
+                if use_watch {
+                    watcher::run_with_watch(&args[2]);
+                } else if use_vm {
                     run_file_vm(&args[2]);
                 } else {
                     run_file(&args[2]);
@@ -141,8 +146,15 @@ fn main() {
                 process::exit(1);
             }
         }
-        "dap" | "debug" => {
+        "dap" => {
             dap::server::run_dap();
+        }
+        "debug" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether debug <file.ae>");
+                process::exit(1);
+            }
+            debugger::debugger::run_debugger(&args[2]);
         }
         "--version" | "-V" => {
             println!("aether {}", env!("CARGO_PKG_VERSION"));
@@ -304,6 +316,8 @@ fn print_usage() {
     eprintln!();
     eprintln!("Tools:");
     eprintln!("  check <file.ae>    Type-check a file");
+    eprintln!("  debug <file.ae>    Start the CLI debugger");
+    eprintln!("  dap                Start DAP debug server (for editors)");
     eprintln!("  lsp                Start Language Server (for editors)");
     eprintln!("  --version          Print version");
     eprintln!("  --help             Show this help");

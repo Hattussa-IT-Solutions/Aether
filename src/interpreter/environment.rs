@@ -91,6 +91,22 @@ impl Environment {
         self.scopes.len()
     }
 
+    /// Collect all (name, value) pairs visible in the current environment,
+    /// searching from innermost scope outward, deduplicating by name.
+    pub fn all_named_values(&self) -> Vec<(String, Value)> {
+        let mut seen = std::collections::HashSet::new();
+        let mut result = Vec::new();
+        for scope in self.scopes.iter().rev() {
+            for (name, val) in scope {
+                if seen.insert(name.clone()) {
+                    result.push((name.clone(), val.clone()));
+                }
+            }
+        }
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        result
+    }
+
     /// Collect all values in this environment (for atomic snapshots).
     pub fn all_values(&self) -> Vec<Value> {
         let mut seen_names = std::collections::HashSet::new();

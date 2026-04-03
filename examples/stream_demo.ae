@@ -1,0 +1,7 @@
+fs_write("/tmp/stream_test.txt", "line1\nline2\nline3\nline4\nline5")
+lines = stream_lines("/tmp/stream_test.txt")
+print("Lines:", lines)
+count = stream_count("/tmp/stream_test.txt", x -> x.contains("3"))
+print("Lines with 3:", count)
+fs_delete("/tmp/stream_test.txt")
+print("Done!")
