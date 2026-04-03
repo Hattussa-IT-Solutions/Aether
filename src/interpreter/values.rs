@@ -126,6 +126,9 @@ pub struct FunctionValue {
     pub body: FuncBody,
     pub closure_env: Option<Rc<RefCell<Environment>>>,
     pub is_method: bool,
+    /// Cached slot names: index i holds the variable name for slot i.
+    /// Resolved once on first call, shared via Rc (zero-cost clone).
+    pub slot_names: std::cell::RefCell<Option<Rc<Vec<String>>>>,
 }
 
 /// A native (built-in) function.

@@ -20,12 +20,13 @@ pub struct Environment {
     pub globals: HashMap<String, Value>,
     locals: Vec<(String, Value)>,
     scope_marks: Vec<usize>,
-    /// Slot-indexed frame for the current function call (fast path).
+    /// Slot-indexed frame for the current function call.
+    /// local_slots[i] is the value of the variable whose name is slot_names[i].
     pub local_slots: Vec<Value>,
-    /// Name-to-slot-index map for the current function.
-    slot_names: Option<HashMap<String, usize>>,
-    /// Saved slot frames from outer function calls.
-    slot_stack: Vec<(Vec<Value>, Option<HashMap<String, usize>>)>,
+    /// Shared slot name list (Rc — zero-cost to clone between calls).
+    slot_names: Option<Rc<Vec<String>>>,
+    /// Saved frames from outer function calls.
+    slot_stack: Vec<(Vec<Value>, Option<Rc<Vec<String>>>)>,
 }
 
 impl Environment {
@@ -46,18 +47,21 @@ impl Environment {
 
     // ── Slot-indexed operations (fast path) ──────────────
 
-    /// Push a new slot frame with name map (for function call).
+    /// Push a new slot frame with Rc<Vec<String>> name list.
+    /// The Rc clone is just a pointer bump — zero allocation.
     #[inline(always)]
-    pub fn push_slot_frame_with_names(&mut self, slot_count: usize, names: Option<HashMap<String, usize>>) {
+    pub fn push_slot_frame_named(&mut self, slot_count: usize, names: Rc<Vec<String>>) {
         let old_slots = std::mem::replace(&mut self.local_slots, vec![Value::Nil; slot_count]);
-        let old_names = std::mem::replace(&mut self.slot_names, names);
+        let old_names = std::mem::replace(&mut self.slot_names, Some(names));
         self.slot_stack.push((old_slots, old_names));
     }
 
-    /// Push a new slot frame with the given capacity.
+    /// Push a slot frame without names (for compatibility).
     #[inline(always)]
     pub fn push_slot_frame(&mut self, slot_count: usize) {
-        self.push_slot_frame_with_names(slot_count, None);
+        let old_slots = std::mem::replace(&mut self.local_slots, vec![Value::Nil; slot_count]);
+        let old_names = self.slot_names.take();
+        self.slot_stack.push((old_slots, old_names));
     }
 
     /// Pop the current slot frame, restoring the caller's frame.
@@ -72,10 +76,19 @@ impl Environment {
         }
     }
 
-    /// Find slot index by name. O(n) but n is typically 1-5.
+    /// Find slot index by name. Scans the small name Vec (typically 1-5 entries).
+    /// This is the critical hot-path function.
     #[inline(always)]
     pub fn find_slot(&self, name: &str) -> Option<usize> {
-        self.slot_names.as_ref().and_then(|m| m.get(name).copied())
+        if let Some(ref names) = self.slot_names {
+            let len = names.len();
+            for i in 0..len {
+                if names[i].as_str() == name {
+                    return Some(i);
+                }
+            }
+        }
+        None
     }
 
     /// Get a value by slot index. O(1).
@@ -140,8 +153,11 @@ impl Environment {
 
     #[inline(always)]
     pub fn get(&self, name: &str) -> Option<Value> {
-        // Check slot frame first (slot names stored by convention)
-        // Then check named locals
+        // FAST PATH: check slot frame first
+        if let Some(idx) = self.find_slot(name) {
+            return Some(self.local_slots[idx].clone());
+        }
+        // Fallback: scan named locals
         let len = self.locals.len();
         let mut i = len;
         while i > 0 {
@@ -173,6 +189,11 @@ impl Environment {
 
     #[inline(always)]
     pub fn define_or_set(&mut self, name: &str, value: Value) {
+        // FAST PATH: slot frame
+        if let Some(idx) = self.find_slot(name) {
+            self.local_slots[idx] = value;
+            return;
+        }
         let len = self.locals.len();
         let mut i = len;
         while i > 0 {

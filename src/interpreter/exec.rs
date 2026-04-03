@@ -76,7 +76,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                 params: fd.params.clone(),
                 body: fd.body.clone(),
                 closure_env: None,
-                is_method: false,
+                is_method: false, slot_names: std::cell::RefCell::new(None),
             }));
             env.define(&fd.name, func);
             Ok(())
@@ -365,7 +365,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                     params: method.params.clone(),
                     body: method.body.clone(),
                     closure_env: None,
-                    is_method: true,
+                    is_method: true, slot_names: std::cell::RefCell::new(None),
                 }));
             }
             let struct_val = Value::StructDef(Rc::new(StructDefValue {
@@ -385,7 +385,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                     params: method.params.clone(),
                     body: method.body.clone(),
                     closure_env: None,
-                    is_method: true,
+                    is_method: true, slot_names: std::cell::RefCell::new(None),
                 }));
             }
             let enum_val = Value::EnumDef(Rc::new(EnumDefValue {
@@ -786,7 +786,7 @@ fn exec_class_def(cd: &ClassDef, env: &mut Environment) -> Result<(), Signal> {
             params: method.params.clone(),
             body: method.body.clone(),
             closure_env: None,
-            is_method: true,
+            is_method: true, slot_names: std::cell::RefCell::new(None),
         }));
     }
 
@@ -843,7 +843,7 @@ fn exec_class_def(cd: &ClassDef, env: &mut Environment) -> Result<(), Signal> {
                 params: func.params.clone(),
                 body: FuncBody::Block(wrapped_body),
                 closure_env: func.closure_env.clone(),
-                is_method: true,
+                is_method: true, slot_names: std::cell::RefCell::new(None),
             }));
         }
         methods = weaved_methods;
@@ -856,7 +856,7 @@ fn exec_class_def(cd: &ClassDef, env: &mut Environment) -> Result<(), Signal> {
             params: method.params.clone(),
             body: method.body.clone(),
             closure_env: None,
-            is_method: false,
+            is_method: false, slot_names: std::cell::RefCell::new(None),
         }));
     }
 
@@ -865,7 +865,7 @@ fn exec_class_def(cd: &ClassDef, env: &mut Environment) -> Result<(), Signal> {
         params: init_fn.params.clone(),
         body: init_fn.body.clone(),
         closure_env: None,
-        is_method: true,
+        is_method: true, slot_names: std::cell::RefCell::new(None),
     }));
 
     // Merge parent fields with own fields
@@ -928,7 +928,7 @@ fn exec_class_def(cd: &ClassDef, env: &mut Environment) -> Result<(), Signal> {
         params: ff.params.clone(),
         body: ff.body.clone(),
         closure_env: None,
-        is_method: true,
+        is_method: true, slot_names: std::cell::RefCell::new(None),
     }));
 
     // Collect lazy properties

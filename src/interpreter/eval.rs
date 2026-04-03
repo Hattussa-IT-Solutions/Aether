@@ -268,7 +268,7 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
                 params: params.clone(),
                 body: FuncBody::Expression((**body).clone()),
                 closure_env: Some(Rc::new(RefCell::new(env.snapshot()))),
-                is_method: false,
+                is_method: false, slot_names: std::cell::RefCell::new(None),
             })))
         }
 
@@ -591,85 +591,58 @@ pub fn call_function(
             let has_closure = func.closure_env.is_some();
             let has_named = named_args.iter().any(|a| a.name.is_some());
 
-            // Check if we have a slot map for this function
-            let slot_count = CURRENT_SLOT_MAP.with(|sm| {
-                sm.borrow().as_ref().and_then(|m| m.counts.get(&func.name).copied())
-            });
-
-            // Slot-indexed path disabled — Vec-scan is faster for small scopes (1-5 vars).
-            // The slot overhead (HashMap clone per call) exceeds the string-scan cost.
-            // To beat Python's 150ms on fib(30), we'd need compile-time slot assignment
-            // that eliminates the HashMap entirely (integer-only frames).
-            if false && !has_closure && !has_named && slot_count.is_some() {
-                // FASTEST PATH: slot-indexed frame — no string operations at all
-                let sc = slot_count.unwrap();
-                let slot_map = CURRENT_SLOT_MAP.with(|sm| {
-                    sm.borrow().as_ref().and_then(|m| m.slots.get(&func.name).cloned())
-                });
-
-                env.push_slot_frame_with_names(sc, slot_map.clone());
-
-                // Bind params by slot index
-                if let Some(ref sm) = slot_map {
-                    for (i, param) in func.params.iter().enumerate() {
-                        let val = if i < arg_vals.len() { arg_vals[i].clone() } else { Value::Nil };
-                        if let Some(&slot) = sm.get(&param.name) {
-                            env.set_slot(slot, val);
-                        }
-                    }
-                }
-
-                let result = match &func.body {
-                    FuncBody::Expression(expr) => {
-                        match eval_expr(expr, env) {
-                            Ok(val) => Ok(val),
-                            Err(Signal::Return(val)) => Ok(val),
-                            Err(e) => Err(e),
-                        }
-                    }
-                    FuncBody::Block(stmts) => {
-                        match crate::interpreter::exec::exec_block_with_value(stmts, env) {
-                            Ok(val) => Ok(val),
-                            Err(Signal::Return(val)) => Ok(val),
-                            Err(e) => Err(e),
-                        }
-                    }
-                };
-
-                env.pop_slot_frame();
-                return result;
-            } else if !has_closure && !has_named {
-                // FAST PATH: push scope with string names (no slot map available)
-                env.push_scope();
-                for (i, param) in func.params.iter().enumerate() {
-                    let val = if i < arg_vals.len() {
-                        arg_vals[i].clone()
-                    } else if let Some(default) = &param.default {
-                        eval_expr(default, env)?
+            if !has_closure && !has_named {
+                // Ensure slot names are resolved (lazy, cached via Rc)
+                let slot_rc = {
+                    let cached = func.slot_names.borrow();
+                    if cached.is_some() {
+                        cached.clone()
                     } else {
-                        Value::Nil
-                    };
-                    env.define_new(&param.name, val);
-                }
-
-                let result = match &func.body {
-                    FuncBody::Expression(expr) => {
-                        match eval_expr(expr, env) {
-                            Ok(val) => Ok(val),
-                            Err(Signal::Return(val)) => Ok(val),
-                            Err(e) => Err(e),
+                        drop(cached);
+                        // Resolve: params first, then body locals
+                        let mut names: Vec<String> = func.params.iter().map(|p| p.name.clone()).collect();
+                        // Walk body for additional local variables
+                        if let FuncBody::Block(stmts) = &func.body {
+                            collect_body_vars(stmts, &mut names);
                         }
-                    }
-                    FuncBody::Block(stmts) => {
-                        match crate::interpreter::exec::exec_block_with_value(stmts, env) {
-                            Ok(val) => Ok(val),
-                            Err(Signal::Return(val)) => Ok(val),
-                            Err(e) => Err(e),
-                        }
+                        let rc = Rc::new(names);
+                        *func.slot_names.borrow_mut() = Some(rc.clone());
+                        Some(rc)
                     }
                 };
-                env.pop_scope();
-                return result;
+
+                if let Some(ref names_rc) = slot_rc {
+                    // SLOT PATH: use Rc<Vec<String>> slot frame
+                    let slot_count = names_rc.len();
+                    env.push_slot_frame_named(slot_count, names_rc.clone());
+
+                    // Bind params by index (params are slots 0..N)
+                    for (i, param) in func.params.iter().enumerate() {
+                        let val = if i < arg_vals.len() { arg_vals[i].clone() }
+                        else if let Some(default) = &param.default { eval_expr(default, env)? }
+                        else { Value::Nil };
+                        env.set_slot(i, val);
+                    }
+
+                    let result = match &func.body {
+                        FuncBody::Expression(expr) => {
+                            match eval_expr(expr, env) {
+                                Ok(val) => Ok(val),
+                                Err(Signal::Return(val)) => Ok(val),
+                                Err(e) => Err(e),
+                            }
+                        }
+                        FuncBody::Block(stmts) => {
+                            match crate::interpreter::exec::exec_block_with_value(stmts, env) {
+                                Ok(val) => Ok(val),
+                                Err(Signal::Return(val)) => Ok(val),
+                                Err(e) => Err(e),
+                            }
+                        }
+                    };
+                    env.pop_slot_frame();
+                    return result;
+                }
             }
 
             // SLOW PATH: closure or named args — need env clone
@@ -1924,6 +1897,46 @@ fn call_super_method(self_val: &Value, method: &str, args: Vec<Value>, env: &mut
         }
     }
     Err(Signal::Throw(Value::String(format!("super.{}() not found", method))))
+}
+
+/// Collect local variable names from a function body for slot resolution.
+fn collect_body_vars(stmts: &[Stmt], names: &mut Vec<String>) {
+    for stmt in stmts {
+        match &stmt.kind {
+            StmtKind::VarDecl { name, .. } => {
+                if !names.contains(name) { names.push(name.clone()); }
+            }
+            StmtKind::ForLoop { pattern, body, .. } => {
+                match pattern {
+                    ForPattern::Single(n) => { if !names.contains(n) { names.push(n.clone()); } }
+                    ForPattern::Enumerate(a, b) => {
+                        if !names.contains(a) { names.push(a.clone()); }
+                        if !names.contains(b) { names.push(b.clone()); }
+                    }
+                    ForPattern::Destructure(ns) => {
+                        for n in ns { if !names.contains(n) { names.push(n.clone()); } }
+                    }
+                }
+                collect_body_vars(body, names);
+            }
+            StmtKind::If { then_block, else_if_blocks, else_block, .. } => {
+                collect_body_vars(then_block, names);
+                for (_, b) in else_if_blocks { collect_body_vars(b, names); }
+                if let Some(b) = else_block { collect_body_vars(b, names); }
+            }
+            StmtKind::Loop { body, .. } => { collect_body_vars(body, names); }
+            StmtKind::Block(b) => { collect_body_vars(b, names); }
+            StmtKind::TryCatch { try_block, catches, finally_block, .. } => {
+                collect_body_vars(try_block, names);
+                for c in catches {
+                    if let Some(b) = &c.binding { if !names.contains(b) { names.push(b.clone()); } }
+                    collect_body_vars(&c.body, names);
+                }
+                if let Some(b) = finally_block { collect_body_vars(b, names); }
+            }
+            _ => {}
+        }
+    }
 }
 
 fn eval_cast(val: Value, target: &TypeAnnotation) -> Result<Value, Signal> {
