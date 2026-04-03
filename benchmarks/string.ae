@@ -1,0 +1,6 @@
+count = 0
+s = "Hello World ".repeat(100)
+for i in 0..10000 {
+    if s.contains("World") { count += 1 }
+}
+print(count)

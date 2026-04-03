@@ -141,11 +141,39 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
 
         StmtKind::ForLoop { label, pattern, iterable, step, body, .. } => {
             let iter_val = eval_expr(iterable, env)?;
-            let items = value_to_iter(&iter_val)?;
 
             let step_size = if let Some(step_expr) = step {
                 eval_expr(step_expr, env)?.as_int().unwrap_or(1) as usize
             } else { 1 };
+
+            // FAST PATH: Range with single variable — avoid materializing entire range
+            if let (Value::Range { start, end, inclusive, step: range_step }, ForPattern::Single(name)) = (&iter_val, pattern) {
+                let s = *start;
+                let e = *end;
+                let st = (*range_step).max(1) * step_size as i64;
+                env.push_scope();
+                let mut i = s;
+                loop {
+                    if st > 0 {
+                        if *inclusive { if i > e { break; } } else { if i >= e { break; } }
+                    } else {
+                        if *inclusive { if i < e { break; } } else { if i <= e { break; } }
+                    }
+                    env.define(name, Value::Int(i));
+                    match exec_block(body, env) {
+                        Ok(()) => {}
+                        Err(Signal::Break(ref l)) if l == label || l.is_none() => break,
+                        Err(Signal::Next(ref l)) if l == label || l.is_none() => { i += st; continue; }
+                        Err(e) => { env.pop_scope(); return Err(e); }
+                    }
+                    i += st;
+                }
+                env.pop_scope();
+                return Ok(());
+            }
+
+            // GENERAL PATH: materialize iterable
+            let items = value_to_iter(&iter_val)?;
 
             env.push_scope();
             let mut idx = 0;

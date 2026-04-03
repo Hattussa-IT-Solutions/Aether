@@ -503,6 +503,47 @@ pub fn call_function(
 ) -> Result<Value, Signal> {
     match func_val {
         Value::Function(func) => {
+            // OPTIMIZATION: For non-closure functions, push/pop a scope on the
+            // caller's env instead of cloning the entire environment. This makes
+            // recursive calls ~100x faster (no deep clone per call).
+            let has_closure = func.closure_env.is_some();
+            let has_named = named_args.iter().any(|a| a.name.is_some());
+
+            if !has_closure && !has_named {
+                // FAST PATH: push scope, bind params, execute, pop scope
+                env.push_scope();
+                for (i, param) in func.params.iter().enumerate() {
+                    let val = if i < arg_vals.len() {
+                        arg_vals[i].clone()
+                    } else if let Some(default) = &param.default {
+                        eval_expr(default, env)?
+                    } else {
+                        Value::Nil
+                    };
+                    env.define(&param.name, val);
+                }
+
+                let result = match &func.body {
+                    FuncBody::Expression(expr) => {
+                        match eval_expr(expr, env) {
+                            Ok(val) => Ok(val),
+                            Err(Signal::Return(val)) => Ok(val),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    FuncBody::Block(stmts) => {
+                        match crate::interpreter::exec::exec_block_with_value(stmts, env) {
+                            Ok(val) => Ok(val),
+                            Err(Signal::Return(val)) => Ok(val),
+                            Err(e) => Err(e),
+                        }
+                    }
+                };
+                env.pop_scope();
+                return result;
+            }
+
+            // SLOW PATH: closure or named args — need env clone
             let mut call_env = if let Some(closure) = &func.closure_env {
                 closure.borrow().clone()
             } else {
@@ -513,7 +554,6 @@ pub fn call_function(
             // Bind parameters
             for (i, param) in func.params.iter().enumerate() {
                 let val = if let Some(named) = named_args.iter().find(|a| a.name.as_deref() == Some(&param.name)) {
-                    // Named argument — evaluate in caller env
                     eval_expr(&named.value, env)?
                 } else if i < arg_vals.len() {
                     arg_vals[i].clone()

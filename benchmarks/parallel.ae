@@ -1,0 +1,26 @@
+def heavy(n) {
+    total = 0
+    for i in 0..n { total += i }
+    return total
+}
+N = 2000000
+
+t1 = time_now()
+a = heavy(N)
+b = heavy(N)
+c = heavy(N)
+seq_ms = (time_now() - t1) * 1000.0
+
+t2 = time_now()
+parallel {
+    pa = heavy(N)
+    pb = heavy(N)
+    pc = heavy(N)
+}
+par_ms = (time_now() - t2) * 1000.0
+
+print("Sequential:", seq_ms, "ms")
+print("Parallel:", par_ms, "ms")
+if par_ms > 0.0 {
+    print("Speedup:", seq_ms / par_ms, "x")
+}
