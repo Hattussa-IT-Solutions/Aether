@@ -822,29 +822,28 @@ pub fn call_method(
             if let Some(cls) = &inst_borrow.class {
                 if let Some(func) = cls.methods.get(method) {
                     let func = func.clone();
-                    let _cls = cls.clone();
                     drop(inst_borrow);
-                    let mut method_env = env.snapshot();
-                    method_env.push_scope();
-                    method_env.define("self", obj.clone());
+
+                    // FAST PATH: push/pop scope instead of env clone
+                    env.push_scope();
+                    env.define("self", obj.clone());
 
                     for (i, param) in func.params.iter().enumerate() {
                         let val = if i < args.len() { args[i].clone() } else { Value::Nil };
-                        method_env.define(&param.name, val);
+                        env.define(&param.name, val);
                     }
 
                     let result = match &func.body {
-                        FuncBody::Expression(expr) => eval_expr(expr, &mut method_env),
+                        FuncBody::Expression(expr) => eval_expr(expr, env),
                         FuncBody::Block(stmts) => {
-                            match crate::interpreter::exec::exec_block(stmts, &mut method_env) {
-                                Ok(()) => Ok(Value::Nil),
+                            match crate::interpreter::exec::exec_block_with_value(stmts, env) {
+                                Ok(val) => Ok(val),
                                 Err(Signal::Return(val)) => Ok(val),
                                 Err(e) => Err(e),
                             }
                         }
                     };
-
-                    // No copy-back needed — self shares same Rc<RefCell>
+                    env.pop_scope();
                     return result;
                 }
                 // Check parent class

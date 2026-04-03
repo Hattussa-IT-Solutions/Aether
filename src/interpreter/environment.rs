@@ -4,71 +4,117 @@ use std::rc::Rc;
 
 use crate::interpreter::values::Value;
 
-/// Variable scope — a stack of hash maps.
-/// Each scope level maps variable names to values.
+/// High-performance variable scope using a flat Vec with scope boundary markers.
+///
+/// Instead of Vec<HashMap>, we use a single Vec<(String, Value)> with scope
+/// boundaries tracked separately. This avoids HashMap allocation/hashing on
+/// every push_scope/pop_scope and makes variable lookup a simple linear scan
+/// (which is faster than HashMap for scopes with < ~20 variables).
+///
+/// For the global scope (which may be large with builtins), we keep a HashMap.
 #[derive(Debug, Clone)]
 pub struct Environment {
-    scopes: Vec<HashMap<String, Value>>,
+    /// Global scope — HashMap for O(1) lookup of builtins.
+    globals: HashMap<String, Value>,
+    /// Local variable stack — flat array of (name, value) pairs.
+    locals: Vec<(String, Value)>,
+    /// Scope boundaries — each entry is the locals.len() at the time of push_scope.
+    scope_marks: Vec<usize>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Self {
-            scopes: vec![HashMap::new()], // global scope
+            globals: HashMap::new(),
+            locals: Vec::new(),
+            scope_marks: Vec::new(),
         }
     }
 
-    /// Create an environment wrapped in Rc<RefCell> for sharing.
     pub fn new_shared() -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self::new()))
     }
 
-    /// Push a new scope onto the stack.
+    /// Push a new scope — just record the current stack position.
+    #[inline]
     pub fn push_scope(&mut self) {
-        self.scopes.push(HashMap::new());
+        self.scope_marks.push(self.locals.len());
     }
 
-    /// Pop the top scope.
+    /// Pop the top scope — truncate locals back to the mark.
+    #[inline]
     pub fn pop_scope(&mut self) {
-        if self.scopes.len() > 1 {
-            self.scopes.pop();
+        if let Some(mark) = self.scope_marks.pop() {
+            self.locals.truncate(mark);
         }
     }
 
-    /// Define a new variable in the current (top) scope.
+    /// Define a variable in the current (innermost) scope.
+    #[inline]
     pub fn define(&mut self, name: &str, value: Value) {
-        if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(name.to_string(), value);
+        if self.scope_marks.is_empty() {
+            // No local scopes — define in globals
+            self.globals.insert(name.to_string(), value);
+        } else {
+            // Check if variable already exists in current scope (update it)
+            let scope_start = *self.scope_marks.last().unwrap();
+            for i in (scope_start..self.locals.len()).rev() {
+                if self.locals[i].0 == name {
+                    self.locals[i].1 = value;
+                    return;
+                }
+            }
+            // New variable in current scope
+            self.locals.push((name.to_string(), value));
         }
     }
 
-    /// Get a variable, searching from innermost scope outward.
+    /// Get a variable — search locals (innermost first), then globals.
+    #[inline]
     pub fn get(&self, name: &str) -> Option<Value> {
-        for scope in self.scopes.iter().rev() {
-            if let Some(val) = scope.get(name) {
-                return Some(val.clone());
+        // Search locals from top of stack backwards (innermost scope first)
+        for i in (0..self.locals.len()).rev() {
+            if self.locals[i].0 == name {
+                return Some(self.locals[i].1.clone());
             }
         }
-        None
+        // Then check globals
+        self.globals.get(name).cloned()
     }
 
     /// Set an existing variable (finds it in the nearest scope that has it).
-    /// Returns true if the variable was found and set.
     pub fn set(&mut self, name: &str, value: Value) -> bool {
-        for scope in self.scopes.iter_mut().rev() {
-            if scope.contains_key(name) {
-                scope.insert(name.to_string(), value);
+        // Search locals first
+        for i in (0..self.locals.len()).rev() {
+            if self.locals[i].0 == name {
+                self.locals[i].1 = value;
                 return true;
             }
+        }
+        // Then globals
+        if self.globals.contains_key(name) {
+            self.globals.insert(name.to_string(), value);
+            return true;
         }
         false
     }
 
-    /// Define or set — if variable exists, update it; otherwise define in current scope.
+    /// Define or set — if variable exists anywhere, update it; otherwise define in current scope.
+    #[inline]
     pub fn define_or_set(&mut self, name: &str, value: Value) {
-        if !self.set(name, value.clone()) {
-            self.define(name, value);
+        // Try to set in existing scope first
+        for i in (0..self.locals.len()).rev() {
+            if self.locals[i].0 == name {
+                self.locals[i].1 = value;
+                return;
+            }
         }
+        if self.globals.contains_key(name) {
+            self.globals.insert(name.to_string(), value);
+            return;
+        }
+        // Not found — define in current scope
+        self.define(name, value);
     }
 
     /// Get a snapshot of the current environment for closure capture.
@@ -76,65 +122,59 @@ impl Environment {
         self.clone()
     }
 
-    /// Return a new environment containing only the outermost (global) scope.
-    /// Used when we want a cheap environment for evaluating fitness functions
-    /// that only reference `self` and literals, not the full call stack.
+    /// Return a new environment containing only the global scope.
     pub fn global_only(&self) -> Environment {
-        let global = self.scopes.first().cloned().unwrap_or_default();
         Environment {
-            scopes: vec![global],
+            globals: self.globals.clone(),
+            locals: Vec::new(),
+            scope_marks: Vec::new(),
         }
     }
 
     /// Get the number of scopes (for debugging).
     pub fn depth(&self) -> usize {
-        self.scopes.len()
+        self.scope_marks.len() + 1 // +1 for global
     }
 
-    /// Collect all (name, value) pairs visible in the current environment,
-    /// searching from innermost scope outward, deduplicating by name.
+    /// Collect all (name, value) pairs visible in the current environment.
     pub fn all_named_values(&self) -> Vec<(String, Value)> {
         let mut seen = std::collections::HashSet::new();
         let mut result = Vec::new();
-        for scope in self.scopes.iter().rev() {
-            for (name, val) in scope {
-                if seen.insert(name.clone()) {
-                    result.push((name.clone(), val.clone()));
-                }
+        // Locals first (innermost)
+        for i in (0..self.locals.len()).rev() {
+            if seen.insert(self.locals[i].0.clone()) {
+                result.push((self.locals[i].0.clone(), self.locals[i].1.clone()));
+            }
+        }
+        // Then globals
+        for (name, val) in &self.globals {
+            if seen.insert(name.clone()) {
+                result.push((name.clone(), val.clone()));
             }
         }
         result.sort_by(|a, b| a.0.cmp(&b.0));
         result
     }
 
-    /// Collect all values in this environment (for atomic snapshots).
+    /// Collect all values (for atomic snapshots).
     pub fn all_values(&self) -> Vec<Value> {
-        let mut seen_names = std::collections::HashSet::new();
+        let mut seen = std::collections::HashSet::new();
         let mut result = Vec::new();
-        for scope in self.scopes.iter().rev() {
-            for (name, val) in scope {
-                if seen_names.insert(name.clone()) {
-                    result.push(val.clone());
-                }
+        for i in (0..self.locals.len()).rev() {
+            if seen.insert(self.locals[i].0.clone()) {
+                result.push(self.locals[i].1.clone());
+            }
+        }
+        for (name, val) in &self.globals {
+            if seen.insert(name.clone()) {
+                result.push(val.clone());
             }
         }
         result
     }
 
-    /// Collect all Instance values currently visible in this environment.
-    /// Used by mutation.atomic to snapshot instances for rollback.
+    /// Collect all Instance values (for mutation.atomic).
     pub fn all_instances(&self) -> Vec<Value> {
-        let mut seen_names = std::collections::HashSet::new();
-        let mut result = Vec::new();
-        for scope in self.scopes.iter().rev() {
-            for (name, val) in scope {
-                if seen_names.insert(name.clone()) {
-                    if matches!(val, Value::Instance(_)) {
-                        result.push(val.clone());
-                    }
-                }
-            }
-        }
-        result
+        self.all_values().into_iter().filter(|v| matches!(v, Value::Instance(_))).collect()
     }
 }
