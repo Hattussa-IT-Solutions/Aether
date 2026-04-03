@@ -1,0 +1,23 @@
+name: aether
+version: '0.1.0'
+summary: Modern programming language with parallelism and genetic evolution
+description: |
+  Aether is a modern, expressive programming language with built-in
+  parallelism, pattern matching, genetic evolution, GPU compute, and
+  novel OOP concepts. Built in Rust.
+
+base: core22
+confinement: classic
+grade: devel
+
+parts:
+  aether:
+    plugin: rust
+    source: .
+    build-packages:
+      - gcc
+      - pkg-config
+
+apps:
+  aether:
+    command: bin/aether

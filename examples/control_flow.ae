@@ -1,0 +1,139 @@
+// ═══════════════════════════════════════════════════
+// Aether Control Flow Demo
+// ═══════════════════════════════════════════════════
+
+// ── If / else if / else ──────────────────────────
+print("=== If/Else ===")
+x = 15
+if x > 20 {
+    print("big")
+} else if x > 10 {
+    print("medium")
+} else {
+    print("small")
+}
+
+// ── If expression (ternary) ──────────────────────
+print("=== If Expression ===")
+label = if x > 10 then "high" else "low"
+print("label:", label)
+
+// ── For loops ────────────────────────────────────
+print("=== For Loops ===")
+
+print("Basic for-each:")
+for item in [10, 20, 30] {
+    print("  ", item)
+}
+
+print("Enumerate:")
+for i, val in ["a", "b", "c"] {
+    print("  {i} -> {val}")
+}
+
+print("Range (exclusive):")
+for i in 0..5 {
+    print("  ", i)
+}
+
+print("Range with step:")
+for i in 0..20 step 5 {
+    print("  ", i)
+}
+
+print("Destructure tuples:")
+pairs = [(1, "one"), (2, "two"), (3, "three")]
+for (num, name) in pairs {
+    print("  {num} = {name}")
+}
+
+// ── Loop variations ──────────────────────────────
+print("=== Loop Variations ===")
+
+print("Loop N times:")
+counter = 0
+loop 5 times {
+    counter += 1
+}
+print("  counter:", counter)
+
+print("Loop while:")
+n = 100
+steps = 0
+loop while n > 1 {
+    n = n / 2
+    steps += 1
+}
+print("  steps to halve 100:", steps)
+
+print("Loop until:")
+val = 0
+loop {
+    val += 7
+} until val > 50
+print("  first multiple of 7 > 50:", val)
+
+// ── Break and Next ───────────────────────────────
+print("=== Break and Next ===")
+
+print("Break from loop:")
+result = 0
+for i in 0..100 {
+    if i > 5 {
+        break
+    }
+    result += i
+}
+print("  sum of 0..5:", result)
+
+print("Next (skip) with condition:")
+odds = []
+for i in 0..10 {
+    next if i % 2 == 0
+    odds.push(i)
+}
+print("  odds:", odds)
+
+// ── Labeled break for nested loops ───────────────
+print("=== Labeled Break ===")
+found = false
+target = 7
+for:outer row in [[1, 2, 3], [4, 5, 6], [7, 8, 9]] {
+    for item in row {
+        if item == target {
+            found = true
+            break:outer
+        }
+    }
+}
+print("  found 7:", found)
+
+// ── Guard statement ──────────────────────────────
+print("=== Guard ===")
+def process(val) {
+    guard let n = val else {
+        print("  nil value, returning")
+        return
+    }
+    print("  processing:", n)
+}
+process(42)
+process(nil)
+
+// ── Pattern matching ─────────────────────────────
+print("=== Match ===")
+
+def classify(n) {
+    match n {
+        0 -> "zero"
+        1..10 -> "small"
+        10..100 -> "medium"
+        _ -> "large"
+    }
+}
+print("  0:", classify(0))
+print("  5:", classify(5))
+print("  50:", classify(50))
+print("  500:", classify(500))
+
+print("Done!")

@@ -1,0 +1,17 @@
+{
+  "name": "aether-lang",
+  "version": "0.1.0",
+  "description": "Aether programming language — modern language with parallelism, pattern matching, and genetic evolution",
+  "bin": {
+    "aether": "./bin/aether-wrapper.js"
+  },
+  "scripts": {
+    "postinstall": "node ./scripts/install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aether-lang/aether"
+  },
+  "license": "Apache-2.0",
+  "keywords": ["programming-language", "compiler", "interpreter", "parallel", "genetic"]
+}

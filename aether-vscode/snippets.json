@@ -1,0 +1,52 @@
+{
+  "Function": {
+    "prefix": "def",
+    "body": ["def ${1:name}(${2:params}) {", "\t$0", "}"],
+    "description": "Define a function"
+  },
+  "Class": {
+    "prefix": "class",
+    "body": ["class ${1:Name} {", "\t${2:field}: ${3:Type}", "", "\tinit(${4:params}) {", "\t\t$0", "\t}", "}"],
+    "description": "Define a class"
+  },
+  "Struct": {
+    "prefix": "struct",
+    "body": ["struct ${1:Name} {", "\t${2:field}: ${3:Type}", "}"],
+    "description": "Define a struct"
+  },
+  "Enum": {
+    "prefix": "enum",
+    "body": ["enum ${1:Name} {", "\t${2:Variant}", "}"],
+    "description": "Define an enum"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": ["for ${1:item} in ${2:collection} {", "\t$0", "}"],
+    "description": "For loop"
+  },
+  "Match": {
+    "prefix": "match",
+    "body": ["match ${1:value} {", "\t${2:pattern} -> ${3:expr}", "\t_ -> ${4:default}", "}"],
+    "description": "Match expression"
+  },
+  "If": {
+    "prefix": "if",
+    "body": ["if ${1:condition} {", "\t$0", "}"],
+    "description": "If statement"
+  },
+  "Parallel": {
+    "prefix": "parallel",
+    "body": ["parallel {", "\t${1:task1} = ${2:expr}", "\t$0", "}"],
+    "description": "Parallel block"
+  },
+  "Loop": {
+    "prefix": "loop",
+    "body": ["loop ${1:5} times {", "\t$0", "}"],
+    "description": "Loop N times"
+  },
+  "Try Catch": {
+    "prefix": "try",
+    "body": ["try {", "\t$0", "} catch ${1:any} as ${2:e} {", "\t${3:handle(e)}", "}"],
+    "description": "Try/catch block"
+  }
+}

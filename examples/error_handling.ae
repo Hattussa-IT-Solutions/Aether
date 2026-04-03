@@ -1,0 +1,93 @@
+// ═══════════════════════════════════════════════════
+// Aether Error Handling Demo
+// ═══════════════════════════════════════════════════
+
+// ── Result type: Ok and Err ──────────────────────
+print("=== Result Type ===")
+def parse_number(s) {
+    result = s.parse_int()
+    return result
+}
+
+r1 = parse_number("42")
+r2 = parse_number("abc")
+print("parse '42':", r1)
+print("parse 'abc':", r2)
+
+// ── Pattern matching on Result ───────────────────
+print("=== Match on Result ===")
+def handle_result(r) {
+    match r {
+        Ok(val) -> print("  Success:", val)
+        Err(msg) -> print("  Error:", msg)
+    }
+}
+handle_result(Ok(100))
+handle_result(Err("something went wrong"))
+
+// ── Error propagation with ? ─────────────────────
+print("=== Error Propagation ===")
+def read_and_double(s) {
+    num = s.parse_int()?
+    return Ok(num * 2)
+}
+
+r = read_and_double("21")
+print("  double '21':", r)
+r = read_and_double("bad")
+print("  double 'bad':", r)
+
+// ── Try / Catch / Finally ────────────────────────
+print("=== Try/Catch/Finally ===")
+
+try {
+    print("  trying risky operation...")
+    throw "something broke"
+    print("  this should not print")
+} catch any as e {
+    print("  caught:", e)
+} finally {
+    print("  finally block runs always")
+}
+
+// ── Custom error values ──────────────────────────
+print("=== Custom Errors ===")
+def divide(a, b) {
+    if b == 0 {
+        throw "DivisionByZero: cannot divide by zero"
+    }
+    return a / b
+}
+
+try {
+    result = divide(10, 2)
+    print("  10 / 2 =", result)
+    result = divide(10, 0)
+    print("  this should not print")
+} catch any as e {
+    print("  caught:", e)
+}
+
+// ── Nested try/catch ─────────────────────────────
+print("=== Nested Try ===")
+try {
+    try {
+        throw "inner error"
+    } catch any as e {
+        print("  inner catch:", e)
+        throw "outer error from inner"
+    }
+} catch any as e {
+    print("  outer catch:", e)
+}
+
+// ── Nil-safe operations ──────────────────────────
+print("=== Nil Safety ===")
+name = nil ?? "Anonymous"
+print("  nil coalesce:", name)
+
+val = nil
+fallback = val ?? 42
+print("  fallback:", fallback)
+
+print("Done!")

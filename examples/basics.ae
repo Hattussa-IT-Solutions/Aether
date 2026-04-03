@@ -1,0 +1,175 @@
+// ═══════════════════════════════════════════════════
+// Aether Basics — Variables, Math, Strings, Control Flow
+// ═══════════════════════════════════════════════════
+
+// ── Variables and types ──────────────────────────
+x = 42
+pi = 3.14159
+name = "Aether"
+flag = true
+
+print("x =", x)
+print("pi =", pi)
+print("name =", name)
+print("flag =", flag)
+
+// ── Arithmetic ───────────────────────────────────
+a = 10
+b = 3
+print("10 + 3 =", a + b)
+print("10 - 3 =", a - b)
+print("10 * 3 =", a * b)
+print("10 / 3 =", a / b)
+print("10 % 3 =", a % b)
+print("2 ** 10 =", 2 ** 10)
+
+// ── String interpolation ─────────────────────────
+greeting = "Hello"
+target = "World"
+print("{greeting}, {target}!")
+print("1 + 2 = {1 + 2}")
+
+// ── If / else ────────────────────────────────────
+score = 85
+if score >= 90 {
+    print("Grade: A")
+} else if score >= 80 {
+    print("Grade: B")
+} else {
+    print("Grade: C")
+}
+
+// ── Loops ────────────────────────────────────────
+print("Counting to 5:")
+for i in 0..5 {
+    print("  ", i)
+}
+
+print("Enumerate:")
+for i, item in ["apple", "banana", "cherry"] {
+    print("  {i}: {item}")
+}
+
+print("Loop 3 times:")
+count = 0
+loop 3 times {
+    count += 1
+    print("  iteration", count)
+}
+
+print("While loop:")
+n = 10
+loop while n > 0 {
+    n -= 3
+}
+print("  n is now", n)
+
+// ── Functions ────────────────────────────────────
+def add(a, b) {
+    return a + b
+}
+print("add(3, 4) =", add(3, 4))
+
+def factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+print("factorial(10) =", factorial(10))
+
+def greet(name, greeting = "Hello") {
+    print("{greeting}, {name}!")
+}
+greet("Alice")
+greet("Bob", "Hi")
+
+// ── Collections ──────────────────────────────────
+list = [1, 2, 3, 4, 5]
+print("List:", list)
+print("Length:", list.len())
+list.push(6)
+print("After push:", list)
+print("Sum:", list.sum())
+
+map = {"name": "Aether", "version": "0.1"}
+print("Map:", map)
+print("Keys:", map.keys())
+
+// ── Comprehensions ───────────────────────────────
+squares = [x ** 2 for x in 0..6]
+print("Squares:", squares)
+
+evens = [x for x in 0..10 if x % 2 == 0]
+print("Evens:", evens)
+
+// ── Pattern matching ─────────────────────────────
+def describe(n) {
+    match n {
+        0 -> print("zero")
+        1..10 -> print("small")
+        _ -> print("big")
+    }
+}
+describe(0)
+describe(5)
+describe(100)
+
+// ── Classes ──────────────────────────────────────
+class Dog {
+    name: Str
+    kind: Str
+    age: Int = 0
+
+    init(name, kind) {
+        self.name = name
+        self.kind = kind
+    }
+
+    def bark() {
+        print("{self.name} says: Woof!")
+    }
+
+    def describe() {
+        print("{self.name} is a {self.kind}, age {self.age}")
+    }
+}
+
+rex = Dog("Rex", "Shepherd")
+rex.bark()
+rex.describe()
+rex.age = 5
+rex.describe()
+
+// ── Lambdas and higher-order functions ───────────
+double = x -> x * 2
+print("double(21) =", double(21))
+
+nums = [1, 2, 3, 4, 5]
+doubled = nums.map(x -> x * 2)
+print("Doubled:", doubled)
+
+big = nums.filter(x -> x > 3)
+print("Filtered > 3:", big)
+
+// ── Error handling ───────────────────────────────
+def safe_divide(a, b) {
+    if b == 0 {
+        return Err("division by zero")
+    }
+    return Ok(a / b)
+}
+
+result = safe_divide(10, 3)
+match result {
+    Ok(val) -> print("10 / 3 =", val)
+    Err(msg) -> print("Error:", msg)
+}
+
+result = safe_divide(10, 0)
+match result {
+    Ok(val) -> print("10 / 0 =", val)
+    Err(msg) -> print("Error:", msg)
+}
+
+print("Done!")

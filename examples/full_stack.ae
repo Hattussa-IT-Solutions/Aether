@@ -1,0 +1,114 @@
+// ═══════════════════════════════════════════════════
+// Aether Full Stack Demo — Every Major Feature
+// ═══════════════════════════════════════════════════
+
+// ── Variables and types ──────────────────────────
+name = "Aether"
+version = 0.1
+print("Welcome to {name} v{version}!")
+
+// ── Functions and lambdas ────────────────────────
+def fibonacci(n) {
+    if n <= 1 { return n }
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+print("fib(10) =", fibonacci(10))
+
+double = x -> x * 2
+print("double(21) =", double(21))
+
+// ── Collections + higher-order ───────────────────
+nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+evens = nums.filter(x -> x % 2 == 0)
+squares = evens.map(x -> x ** 2)
+total = squares.sum()
+print("Sum of squares of evens 1-10:", total)
+
+// ── Pattern matching ─────────────────────────────
+def http_status(code) {
+    match code {
+        200 -> "OK"
+        301 -> "Moved"
+        404 -> "Not Found"
+        500 -> "Server Error"
+        _ -> "Unknown"
+    }
+}
+print("HTTP 200:", http_status(200))
+print("HTTP 404:", http_status(404))
+
+// ── Classes and inheritance ──────────────────────
+class Shape {
+    name: Str
+    init(name) { self.name = name }
+    def area() { return 0.0 }
+    def describe() {
+        print("{self.name}: area = {self.area()}")
+    }
+}
+
+class Circle : Shape {
+    radius: Float
+    init(r) {
+        self.name = "Circle"
+        self.radius = r
+    }
+    def area() { return PI * self.radius ** 2 }
+}
+
+class Rect : Shape {
+    w: Float
+    h: Float
+    init(w, h) {
+        self.name = "Rectangle"
+        self.w = w
+        self.h = h
+    }
+    def area() { return self.w * self.h }
+}
+
+shapes = [Circle(5.0), Rect(3.0, 4.0)]
+for shape in shapes {
+    shape.describe()
+}
+
+// ── Error handling ───────────────────────────────
+def safe_sqrt(n) {
+    if n < 0 {
+        return Err("cannot sqrt negative")
+    }
+    return Ok(sqrt(n))
+}
+
+match safe_sqrt(16.0) {
+    Ok(val) -> print("sqrt(16) =", val)
+    Err(msg) -> print("Error:", msg)
+}
+
+match safe_sqrt(-1.0) {
+    Ok(val) -> print("sqrt(-1) =", val)
+    Err(msg) -> print("Error:", msg)
+}
+
+// ── Comprehensions ───────────────────────────────
+matrix = [[i * 3 + j + 1 for j in 0..3] for i in 0..3]
+print("Matrix:", matrix)
+
+// ── Pipeline ─────────────────────────────────────
+result = 10 |> double |> (x -> x + 1) |> str
+print("Pipeline result:", result)
+
+// ── String operations ────────────────────────────
+csv = "alice,bob,charlie,diana"
+names = csv.split(",")
+upper_names = names.map(x -> x.upper())
+print("Names:", upper_names)
+
+// ── Control flow showcase ────────────────────────
+print("\nFizzBuzz 1-20:")
+for i in 1..21 {
+    msg = if i % 15 == 0 then "FizzBuzz" else if i % 3 == 0 then "Fizz" else if i % 5 == 0 then "Buzz" else str(i)
+    print("  ", msg)
+}
+
+print("\nDone! Aether is ready.")

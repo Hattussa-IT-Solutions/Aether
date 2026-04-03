@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Programming Language</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <a href="index.html" class="logo">Aether</a>
+            <div class="links">
+                <a href="docs.html">Docs</a>
+                <a href="install.html">Install</a>
+                <a href="playground.html">Playground</a>
+                <a href="https://github.com/aether-lang/aether">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Aether</h1>
+            <p>A modern programming language with built-in parallelism, pattern matching, genetic evolution, and GPU compute. Expressive. Fast. Beautiful.</p>
+            <a href="install.html" class="cta">Get Started</a>
+            <a href="playground.html" class="cta secondary">Try Online</a>
+        </div>
+
+        <pre><span class="cm">// Hello World in Aether</span>
+<span class="kw">print</span>(<span class="str">"Hello from Aether!"</span>)
+
+<span class="cm">// Pattern matching</span>
+<span class="kw">def</span> <span class="fn">classify</span>(score) {
+    <span class="kw">match</span> score {
+        <span class="num">90</span>..<span class="num">100</span> -> <span class="str">"A"</span>
+        <span class="num">80</span>..<span class="num">90</span>  -> <span class="str">"B"</span>
+        _       -> <span class="str">"F"</span>
+    }
+}
+
+<span class="cm">// Parallel execution</span>
+<span class="kw">parallel</span> {
+    users  = <span class="fn">fetch_users</span>()
+    orders = <span class="fn">fetch_orders</span>()
+}
+
+<span class="cm">// Functional pipelines</span>
+result = data |> <span class="fn">transform</span> |> <span class="fn">filter</span> |> <span class="fn">collect</span></pre>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>Expressive Syntax</h3>
+                <p>Clean, Python-inspired syntax with braces. No semicolons, no parentheses around conditions. String interpolation built in.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Built-in Parallelism</h3>
+                <p>parallel {} blocks run tasks concurrently. Race conditions, timeouts, and dependencies are first-class constructs.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Pattern Matching</h3>
+                <p>Powerful match expressions with destructuring, range patterns, guards, and exhaustiveness checking.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Modern OOP</h3>
+                <p>Classes, structs, enums, interfaces, plus novel concepts: reactive properties, temporal state, weave injection.</p>
+            </div>
+            <div class="feature-card">
+                <h3>GPU Compute</h3>
+                <p>@gpu decorator compiles functions to CUDA PTX, WebGPU WGSL, or ROCm HIP. Tensor operations with autodiff.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Genetic Evolution</h3>
+                <p>genetic classes with chromosomes, genes, and fitness functions. Built-in evolve blocks for optimization.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>Aether Programming Language &mdash; Apache 2.0 License</p>
+        </div>
+    </footer>
+</body>
+</html>

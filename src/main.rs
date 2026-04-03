@@ -1,0 +1,222 @@
+#![allow(dead_code, unused_imports, unused_variables, unused_mut)]
+
+use std::env;
+use std::fs;
+use std::process;
+
+mod lexer;
+mod parser;
+mod types;
+mod interpreter;
+mod compiler;
+mod codegen;
+mod stdlib;
+mod bridge;
+mod repl;
+mod diagnostics;
+mod forge;
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        print_usage();
+        process::exit(1);
+    }
+
+    match args[1].as_str() {
+        "run" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether run <file.ae>");
+                process::exit(1);
+            }
+            let use_vm = args.iter().any(|a| a == "--vm");
+            if use_vm {
+                run_file_vm(&args[2]);
+            } else {
+                run_file(&args[2]);
+            }
+        }
+        "repl" => {
+            repl::start_repl();
+        }
+        "new" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether new <project-name>");
+                process::exit(1);
+            }
+            if let Err(e) = forge::create_project(&args[2]) {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        }
+        "test" => {
+            let dir = if args.len() >= 3 { &args[2] } else { "." };
+            if let Err(e) = forge::run_tests(dir) {
+                eprintln!("{}", e);
+                process::exit(1);
+            }
+        }
+        "check" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether check <file.ae>");
+                process::exit(1);
+            }
+            check_file(&args[2]);
+        }
+        "jit" => {
+            if args.len() < 3 {
+                eprintln!("Usage: aether jit <file.ae>");
+                process::exit(1);
+            }
+            jit_file(&args[2]);
+        }
+        "--version" | "-V" => {
+            println!("aether {}", env!("CARGO_PKG_VERSION"));
+        }
+        "--help" | "-h" => {
+            print_usage();
+        }
+        // If arg is a .ae file, run it directly
+        path if path.ends_with(".ae") => {
+            run_file(path);
+        }
+        cmd => {
+            eprintln!("Unknown command: {}", cmd);
+            print_usage();
+            process::exit(1);
+        }
+    }
+}
+
+fn run_file(filename: &str) {
+    let source = match fs::read_to_string(filename) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Error reading '{}': {}", filename, e);
+            process::exit(1);
+        }
+    };
+
+    // Lex
+    let mut scanner = lexer::scanner::Scanner::new(&source, filename.to_string());
+    let tokens = scanner.scan_tokens();
+
+    // Parse
+    let mut parser_inst = parser::parser::Parser::new(tokens);
+    let program = match parser_inst.parse_program() {
+        Ok(p) => p,
+        Err(errors) => {
+            for e in &errors {
+                eprintln!("{}", e);
+            }
+            process::exit(1);
+        }
+    };
+
+    // Interpret
+    let mut env = interpreter::environment::Environment::new();
+    interpreter::register_builtins(&mut env);
+
+    if let Err(e) = interpreter::interpret(&program, &mut env) {
+        eprintln!("{}", e);
+        process::exit(1);
+    }
+}
+
+fn check_file(filename: &str) {
+    let source = match fs::read_to_string(filename) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Error reading '{}': {}", filename, e);
+            process::exit(1);
+        }
+    };
+
+    let mut scanner = lexer::scanner::Scanner::new(&source, filename.to_string());
+    let tokens = scanner.scan_tokens();
+    let mut parser_inst = parser::parser::Parser::new(tokens);
+
+    let program = match parser_inst.parse_program() {
+        Ok(p) => p,
+        Err(errors) => {
+            for e in &errors { eprintln!("{}", e); }
+            process::exit(1);
+        }
+    };
+
+    let strict = program.directives.iter().any(|d| d.name == "strict");
+    let mut checker = types::checker::TypeChecker::new(strict);
+    let errors = checker.check_program(&program);
+
+    if errors.is_empty() {
+        println!("No type errors found.");
+    } else {
+        let output = diagnostics::format_errors(&errors, &source);
+        eprint!("{}", output);
+        process::exit(1);
+    }
+}
+
+fn jit_file(filename: &str) {
+    let source = match fs::read_to_string(filename) {
+        Ok(s) => s,
+        Err(e) => { eprintln!("Error: {}", e); process::exit(1); }
+    };
+    let mut scanner = lexer::scanner::Scanner::new(&source, filename.to_string());
+    let tokens = scanner.scan_tokens();
+    let mut parser_inst = parser::parser::Parser::new(tokens);
+    let program = match parser_inst.parse_program() {
+        Ok(p) => p,
+        Err(errors) => { for e in &errors { eprintln!("{}", e); } process::exit(1); }
+    };
+    match codegen::cranelift::jit_compile_and_run(&program) {
+        Ok(result) => println!("{}", result),
+        Err(e) => { eprintln!("JIT error: {}", e); process::exit(1); }
+    }
+}
+
+fn run_file_vm(filename: &str) {
+    let source = match fs::read_to_string(filename) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Error reading '{}': {}", filename, e);
+            process::exit(1);
+        }
+    };
+
+    let mut scanner = lexer::scanner::Scanner::new(&source, filename.to_string());
+    let tokens = scanner.scan_tokens();
+    let mut parser_inst = parser::parser::Parser::new(tokens);
+    let program = match parser_inst.parse_program() {
+        Ok(p) => p,
+        Err(errors) => {
+            for e in &errors { eprintln!("{}", e); }
+            process::exit(1);
+        }
+    };
+
+    let mut comp = compiler::compiler::Compiler::new();
+    let chunks = comp.compile_program(&program);
+
+    let mut vm = compiler::vm::VM::new();
+    if let Err(e) = vm.execute(&chunks[0]) {
+        eprintln!("VM error: {}", e);
+        process::exit(1);
+    }
+}
+
+fn print_usage() {
+    eprintln!("Aether Programming Language v{}", env!("CARGO_PKG_VERSION"));
+    eprintln!();
+    eprintln!("Usage: aether <command> [args]");
+    eprintln!();
+    eprintln!("Commands:");
+    eprintln!("  run <file.ae>      Run an Aether source file");
+    eprintln!("  repl               Start interactive REPL");
+    eprintln!("  new <name>         Create a new project");
+    eprintln!("  test [dir]         Run test files");
+    eprintln!("  check <file.ae>    Type-check a file");
+    eprintln!("  --version          Print version");
+    eprintln!("  --help             Show this help");
+}

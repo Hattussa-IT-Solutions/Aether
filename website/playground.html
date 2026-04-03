@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Playground</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .playground { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
+        textarea, .output {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            min-height: 400px;
+            resize: vertical;
+        }
+        textarea { width: 100%; }
+        .output { white-space: pre-wrap; overflow-y: auto; }
+        .toolbar { margin-top: 16px; display: flex; gap: 12px; align-items: center; }
+        .run-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .run-btn:hover { background: #6d28d9; }
+        select {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <a href="index.html" class="logo">Aether</a>
+            <div class="links">
+                <a href="docs.html">Docs</a>
+                <a href="install.html">Install</a>
+                <a href="playground.html">Playground</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container" style="padding: 40px 0;">
+        <h1>Playground</h1>
+        <p style="color: var(--text-secondary); margin-top: 8px;">Write and run Aether code in your browser.</p>
+
+        <div class="toolbar">
+            <button class="run-btn" onclick="runCode()">Run</button>
+            <select id="examples" onchange="loadExample()">
+                <option value="">-- Load Example --</option>
+                <option value="hello">Hello World</option>
+                <option value="fibonacci">Fibonacci</option>
+                <option value="classes">Classes</option>
+                <option value="match">Pattern Matching</option>
+            </select>
+        </div>
+
+        <div class="playground">
+            <textarea id="editor">print("Hello from Aether!")
+name = "World"
+print("Hello, {name}!")
+
+for i in 0..5 {
+    print("Count:", i)
+}
+</textarea>
+            <div class="output" id="output">Click "Run" to execute...</div>
+        </div>
+    </div>
+
+    <script>
+        const examples = {
+            hello: 'print("Hello from Aether!")\nname = "World"\nprint("Hello, {name}!")',
+            fibonacci: 'def fib(n) {\n    if n <= 1 { return n }\n    return fib(n-1) + fib(n-2)\n}\n\nfor i in 0..12 {\n    print("fib({i}) =", fib(i))\n}',
+            classes: 'class Animal {\n    name: Str\n    init(name) { self.name = name }\n    def speak() { return "..." }\n}\n\nclass Dog : Animal {\n    def speak() { return "{self.name}: Woof!" }\n}\n\nd = Dog("Rex")\nprint(d.speak())',
+            match: 'def grade(score) {\n    match score {\n        90..100 -> "A"\n        80..90 -> "B"\n        _ -> "F"\n    }\n}\n\nfor s in [95, 85, 55] {\n    print("{s} -> {grade(s)}")\n}'
+        };
+
+        function loadExample() {
+            const sel = document.getElementById('examples');
+            if (examples[sel.value]) {
+                document.getElementById('editor').value = examples[sel.value];
+            }
+        }
+
+        function runCode() {
+            const code = document.getElementById('editor').value;
+            const output = document.getElementById('output');
+            output.textContent = "Running... (Note: Full execution requires the WASM build.\nShowing simulated output for demo.)\n\n";
+            // Simulated output for the playground demo
+            try {
+                const lines = code.split('\n');
+                let result = '';
+                for (const line of lines) {
+                    const m = line.match(/^print\(["'](.+?)["']\)/);
+                    if (m) result += m[1] + '\n';
+                }
+                output.textContent += result || '(Install Aether locally to run full programs)';
+            } catch(e) {
+                output.textContent += 'Error: ' + e.message;
+            }
+        }
+    </script>
+
+    <footer><div class="container"><p>Aether Programming Language</p></div></footer>
+</body>
+</html>

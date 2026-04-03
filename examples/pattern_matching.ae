@@ -1,0 +1,117 @@
+// ═══════════════════════════════════════════════════
+// Aether Pattern Matching Demo
+// ═══════════════════════════════════════════════════
+
+// ── Literal patterns ─────────────────────────────
+print("=== Literal Patterns ===")
+def day_name(n) {
+    return match n {
+        1 -> "Monday"
+        2 -> "Tuesday"
+        3 -> "Wednesday"
+        4 -> "Thursday"
+        5 -> "Friday"
+        6 -> "Saturday"
+        7 -> "Sunday"
+        _ -> "Unknown"
+    }
+}
+print("  Day 1:", day_name(1))
+print("  Day 5:", day_name(5))
+print("  Day 9:", day_name(9))
+
+// ── Range patterns ───────────────────────────────
+print("=== Range Patterns ===")
+def grade(score) {
+    return match score {
+        90..100 -> "A"
+        80..90 -> "B"
+        70..80 -> "C"
+        60..70 -> "D"
+        _ -> "F"
+    }
+}
+print("  95:", grade(95))
+print("  85:", grade(85))
+print("  55:", grade(55))
+
+// ── Destructuring Result ─────────────────────────
+print("=== Destructure Result ===")
+def process(result) {
+    match result {
+        Ok(val) -> print("  Got value:", val)
+        Err(msg) -> print("  Got error:", msg)
+    }
+}
+process(Ok(42))
+process(Err("timeout"))
+
+// ── Guard conditions ─────────────────────────────
+print("=== Guard in Match ===")
+def classify(n) {
+    match n {
+        x if x < 0 -> "negative"
+        0 -> "zero"
+        x if x % 2 == 0 -> "positive even"
+        _ -> "positive odd"
+    }
+}
+print("  -5:", classify(-5))
+print("  0:", classify(0))
+print("  4:", classify(4))
+print("  7:", classify(7))
+
+// ── Wildcard pattern ─────────────────────────────
+print("=== Wildcard ===")
+def is_special(val) {
+    match val {
+        0 -> true
+        1 -> true
+        _ -> false
+    }
+}
+print("  0 special:", is_special(0))
+print("  5 special:", is_special(5))
+
+// ── Match as expression ──────────────────────────
+print("=== Match Expression ===")
+x = 42
+msg = match x {
+    0 -> "nothing"
+    _ -> "something"
+}
+print("  42 is:", msg)
+
+// ── Enum variant patterns ────────────────────────
+print("=== Enum Variants ===")
+def shape_area(shape) {
+    match shape {
+        .Circle(r) -> 3.14159 * r * r
+        .Rect(w, h) -> w * h
+        _ -> 0.0
+    }
+}
+
+c = .Circle(5.0)
+r = .Rect(3.0, 4.0)
+print("  Circle area:", shape_area(c))
+print("  Rect area:", shape_area(r))
+
+// ── Nested match ─────────────────────────────────
+print("=== Nested Patterns ===")
+def describe_result(r) {
+    match r {
+        Ok(val) -> {
+            match val {
+                0 -> print("  Ok(zero)")
+                _ -> print("  Ok(nonzero):", val)
+            }
+        }
+        Err(msg) -> print("  Error:", msg)
+    }
+}
+describe_result(Ok(0))
+describe_result(Ok(42))
+describe_result(Err("fail"))
+
+print("Done!")

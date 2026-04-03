@@ -1,0 +1,146 @@
+// ═══════════════════════════════════════════════════
+// Aether OOP Demo
+// ═══════════════════════════════════════════════════
+
+// ── Basic class with init, methods, fields ───────
+print("=== Basic Class ===")
+class Animal {
+    name: Str
+    sound: Str
+    age: Int = 0
+
+    init(name, sound) {
+        self.name = name
+        self.sound = sound
+    }
+
+    def speak() {
+        return "{self.name} says {self.sound}!"
+    }
+
+    def birthday() {
+        self.age += 1
+    }
+}
+
+cat = Animal("Whiskers", "Meow")
+print(cat.speak())
+cat.birthday()
+cat.birthday()
+print("{cat.name} is {cat.age} years old")
+
+// ── Inheritance ──────────────────────────────────
+print("\n=== Inheritance ===")
+class Dog : Animal {
+    tricks: Int = 0
+
+    def learn_trick() {
+        self.tricks += 1
+    }
+
+    def speak() {
+        return "{self.name} says WOOF! (knows {self.tricks} tricks)"
+    }
+}
+
+buddy = Dog("Buddy", "Woof")
+buddy.learn_trick()
+buddy.learn_trick()
+print(buddy.speak())
+buddy.birthday()
+print("{buddy.name} is {buddy.age} years old")
+
+// ── Struct (value type) ──────────────────────────
+print("\n=== Struct ===")
+struct Point {
+    x: Float
+    y: Float
+}
+
+p1 = Point(3.0, 4.0)
+print("Point: ({p1.x}, {p1.y})")
+
+// ── Enum with associated values ──────────────────
+print("\n=== Enum ===")
+enum Color {
+    Red
+    Green
+    Blue
+    Custom(r: Int, g: Int, b: Int)
+}
+
+def describe_color(c) {
+    match c {
+        .Red -> "red"
+        .Green -> "green"
+        .Blue -> "blue"
+        .Custom(r, g, b) -> "rgb({r}, {g}, {b})"
+        _ -> "unknown"
+    }
+}
+
+print("Color:", describe_color(.Red))
+print("Color:", describe_color(.Custom(255, 128, 0)))
+
+// ── Interface ────────────────────────────────────
+print("\n=== Interface ===")
+interface Describable {
+    def describe() -> Str
+}
+
+class Car impl Describable {
+    make: Str
+    year: Int
+
+    init(make, year) {
+        self.make = make
+        self.year = year
+    }
+
+    def describe() -> Str {
+        return "{self.year} {self.make}"
+    }
+}
+
+car = Car("Tesla", 2024)
+print("Car:", car.describe())
+
+// ── Type alias ───────────────────────────────────
+print("\n=== Type Alias ===")
+type UserID = Int
+id = 42
+print("UserID:", id)
+
+// ── Collections methods ──────────────────────────
+print("\n=== Collections ===")
+nums = [5, 3, 1, 4, 2]
+print("Original:", nums)
+print("Sorted:", nums.sort())
+print("Reversed:", nums.reverse())
+print("Unique:", [1, 2, 2, 3, 3, 3].unique())
+print("Any > 4:", nums.any(x -> x > 4))
+print("All > 0:", nums.all(x -> x > 0))
+print("Min:", nums.min())
+print("Max:", nums.max())
+
+// ── String methods ───────────────────────────────
+print("\n=== String Methods ===")
+s = "Hello, World!"
+print("Upper:", s.upper())
+print("Lower:", s.lower())
+print("Replace:", s.replace("World", "Aether"))
+print("Split:", "a,b,c".split(","))
+print("Contains:", s.contains("World"))
+print("Starts with:", s.starts_with("Hello"))
+print("Repeat:", "ha".repeat(3))
+
+// ── Map methods ──────────────────────────────────
+print("\n=== Map Methods ===")
+config = {"host": "localhost", "port": "8080", "debug": "true"}
+print("Keys:", config.keys())
+print("Values:", config.values())
+print("Has host:", config.contains_key("host"))
+config.set("port", "9090")
+print("New port:", config.get("port"))
+
+print("\nDone!")

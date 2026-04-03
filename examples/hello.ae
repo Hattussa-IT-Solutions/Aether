@@ -1,0 +1,3 @@
+print("Hello from Aether!")
+name = "World"
+print("Hello, {name}!")

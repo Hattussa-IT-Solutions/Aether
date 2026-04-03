@@ -1,0 +1,257 @@
+// ═══════════════════════════════════════════════════
+// Aether Syntax Test — Every major construct
+// ═══════════════════════════════════════════════════
+
+#strict
+
+// ── Variables ────────────────────────────────────
+x = 5
+let y = 10
+const MAX = 100
+z: Int = x + y
+name: Str = "Aether"
+
+// ── Functions ────────────────────────────────────
+def add(a: Int, b: Int) -> Int {
+    return a + b
+}
+
+def double(x: Num) -> Num = x * 2
+
+def greet(name: Str, greeting: Str = "Hello") {
+    print("{greeting}, {name}!")
+}
+
+async def fetch(url: Str) {
+    // placeholder
+}
+
+// ── Lambdas ──────────────────────────────────────
+square = x -> x ** 2
+sum = (a, b) -> a + b
+
+// ── Control flow ─────────────────────────────────
+if x > 0 {
+    print("positive")
+} else if x < 0 {
+    print("negative")
+} else {
+    print("zero")
+}
+
+val = if x > 0 then "pos" else "neg"
+
+// ── Pattern matching ─────────────────────────────
+match x {
+    1 -> print("one")
+    2..10 -> print("small")
+    _ -> print("other")
+}
+
+// ── Loops ────────────────────────────────────────
+for item in [1, 2, 3] {
+    print(item)
+}
+
+for i, item in ["a", "b", "c"] {
+    print("{i}: {item}")
+}
+
+for i in 0..10 {
+    next if i == 5
+}
+
+loop 3 times {
+    print("repeat")
+}
+
+loop while x > 0 {
+    x = x - 1
+}
+
+// ── Collections ──────────────────────────────────
+list = [1, 2, 3, 4, 5]
+map = {"name": "Aether", "version": "0.1"}
+set = {1, 2, 3}
+tuple = (10, "hello", true)
+range = 0..100
+
+// ── Comprehensions ───────────────────────────────
+squares = [x ** 2 for x in 0..10]
+evens = [x for x in list if x % 2 == 0]
+
+// ── Error handling ───────────────────────────────
+try {
+    result = risky_operation()
+} catch IOError as e {
+    print("IO error: {e}")
+} catch any as e {
+    print("Error: {e}")
+} finally {
+    cleanup()
+}
+
+// ── Class ────────────────────────────────────────
+class Dog {
+    name: Str
+    breed: Str
+    age: Int = 0
+
+    init(name: Str, breed: Str) {
+        self.name = name
+        self.breed = breed
+    }
+
+    def bark() {
+        print("{self.name}: Woof!")
+    }
+
+    area: Float => 0.0
+
+    operator ==(other: Dog) -> Bool {
+        return self.name == other.name
+    }
+}
+
+// ── Inheritance ──────────────────────────────────
+class PoliceDog : Dog {
+    badge: Int
+
+    def search() {
+        print("{self.name} is searching!")
+    }
+}
+
+// ── Interface ────────────────────────────────────
+interface Serializable {
+    def to_json() -> Str
+}
+
+class User impl Serializable {
+    name: Str
+    email: Str
+
+    def to_json() -> Str {
+        return "{}"
+    }
+}
+
+// ── Struct ───────────────────────────────────────
+struct Point {
+    x: Float
+    y: Float
+
+    def magnitude() -> Float = sqrt(self.x ** 2 + self.y ** 2)
+}
+
+// ── Enum ─────────────────────────────────────────
+enum Shape {
+    Circle(radius: Float)
+    Rect(width: Float, height: Float)
+
+    def area() -> Float {
+        match self {
+            .Circle(r) -> 3.14 * r ** 2
+            .Rect(w, h) -> w * h
+        }
+    }
+}
+
+// ── Modules ──────────────────────────────────────
+use fs
+use net.http as http
+
+mod utils {
+    pub def helper() {
+        print("helping")
+    }
+}
+
+// ── Type alias ───────────────────────────────────
+type UserID = Int
+type Callback = (Int, Str) -> Bool
+
+// ── Parallel blocks ──────────────────────────────
+parallel {
+    users = fetch_users()
+    orders = fetch_orders()
+}
+
+parallel.race {
+    fast = cache_lookup()
+    slow = db_query()
+}
+
+// ── Weave ────────────────────────────────────────
+weave Logged {
+    before { log("start") }
+    after { log("end") }
+}
+
+class ApiService with Logged {
+    def get_user() {
+        return nil
+    }
+}
+
+// ── Extend ───────────────────────────────────────
+extend Int {
+    def is_even() -> Bool = self % 2 == 0
+}
+
+// ── Selective inheritance ────────────────────────
+class Penguin : Dog select(bark) {
+}
+
+// ── Genetic class ────────────────────────────────
+genetic class Strategy {
+    chromosome params {
+        gene threshold: Float = 0.5 { range 0.0..1.0 }
+        gene window: Int = 20 { range 5..200 }
+    }
+
+    fitness(data: Float) -> Float {
+        return self.threshold
+    }
+}
+
+// ── Device blocks ────────────────────────────────
+device(.gpu) {
+    print("GPU compute")
+}
+
+device(.cpu) {
+    print("CPU compute")
+}
+
+// ── Mutation atomic ──────────────────────────────
+mutation.atomic {
+    x = 1
+    y = 2
+}
+
+// ── Decorators ───────────────────────────────────
+@gpu
+def compute_kernel() {
+    print("kernel")
+}
+
+@test
+def test_add() {
+    result = add(1, 2)
+}
+
+// ── Guard / if let ───────────────────────────────
+guard let value = maybe_value else {
+    return
+}
+
+// ── Pipeline ─────────────────────────────────────
+result = data |> transform |> filter |> collect
+
+// ── Optional chaining + nil coalescing ───────────
+city = user?.address?.city ?? "Unknown"
+
+// ── String interpolation ─────────────────────────
+message = "The result is {x + y}"
+print("Hello, {name}!")
