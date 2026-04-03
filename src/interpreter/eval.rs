@@ -66,9 +66,71 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
             }
         }
 
-        // ── Binary operations ────────────────────────────
+        // ── Binary operations (with inline fast paths for Int arithmetic) ──
         ExprKind::Binary { left, op, right } => {
-            eval_binary(op, left, right, env)
+            // FAST PATH: Int op Int — avoids full eval_binary dispatch
+            match op {
+                BinaryOp::Add => {
+                    let l = eval_expr(left, env)?;
+                    let r = eval_expr(right, env)?;
+                    if let (Value::Int(a), Value::Int(b)) = (&l, &r) {
+                        return Ok(Value::Int(a + b));
+                    }
+                    if let (Value::Float(a), Value::Float(b)) = (&l, &r) {
+                        return Ok(Value::Float(a + b));
+                    }
+                    if let (Value::Int(a), Value::Float(b)) = (&l, &r) {
+                        return Ok(Value::Float(*a as f64 + b));
+                    }
+                    if let (Value::Float(a), Value::Int(b)) = (&l, &r) {
+                        return Ok(Value::Float(a + *b as f64));
+                    }
+                    if let (Value::String(a), Value::String(b)) = (&l, &r) {
+                        return Ok(Value::String(format!("{}{}", a, b)));
+                    }
+                    if let Value::String(a) = &l {
+                        return Ok(Value::String(format!("{}{}", a, r)));
+                    }
+                    eval_binary(op, left, right, env)
+                }
+                BinaryOp::Sub => {
+                    let l = eval_expr(left, env)?;
+                    let r = eval_expr(right, env)?;
+                    match (&l, &r) {
+                        (Value::Int(a), Value::Int(b)) => Ok(Value::Int(a - b)),
+                        (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a - b)),
+                        (Value::Int(a), Value::Float(b)) => Ok(Value::Float(*a as f64 - b)),
+                        (Value::Float(a), Value::Int(b)) => Ok(Value::Float(a - *b as f64)),
+                        _ => eval_binary(op, left, right, env),
+                    }
+                }
+                BinaryOp::Mul => {
+                    let l = eval_expr(left, env)?;
+                    let r = eval_expr(right, env)?;
+                    match (&l, &r) {
+                        (Value::Int(a), Value::Int(b)) => Ok(Value::Int(a * b)),
+                        (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a * b)),
+                        (Value::Int(a), Value::Float(b)) => Ok(Value::Float(*a as f64 * b)),
+                        (Value::Float(a), Value::Int(b)) => Ok(Value::Float(a * *b as f64)),
+                        _ => eval_binary(op, left, right, env),
+                    }
+                }
+                BinaryOp::Lt | BinaryOp::LtEq | BinaryOp::Gt | BinaryOp::GtEq => {
+                    let l = eval_expr(left, env)?;
+                    let r = eval_expr(right, env)?;
+                    if let (Value::Int(a), Value::Int(b)) = (&l, &r) {
+                        return Ok(Value::Bool(match op {
+                            BinaryOp::Lt => a < b,
+                            BinaryOp::LtEq => a <= b,
+                            BinaryOp::Gt => a > b,
+                            BinaryOp::GtEq => a >= b,
+                            _ => unreachable!(),
+                        }));
+                    }
+                    eval_binary(op, left, right, env)
+                }
+                _ => eval_binary(op, left, right, env),
+            }
         }
 
         // ── Function call ────────────────────────────────
@@ -520,7 +582,7 @@ pub fn call_function(
                     } else {
                         Value::Nil
                     };
-                    env.define(&param.name, val);
+                    env.define_new(&param.name, val);
                 }
 
                 let result = match &func.body {
@@ -660,23 +722,23 @@ pub fn call_function(
                 class: Some(cls.clone()),
             }));
 
-            // Call init if available
+            // Call init if available — use push/pop scope (fast path)
             if let Some(init_fn) = &cls.init {
-                let mut init_env = env.snapshot();
-                init_env.push_scope();
-                init_env.define("self", Value::Instance(instance.clone()));
+                env.push_scope();
+                env.define_new("self", Value::Instance(instance.clone()));
 
                 for (i, param) in init_fn.params.iter().enumerate() {
                     let val = if i < arg_vals.len() { arg_vals[i].clone() } else { Value::Nil };
-                    init_env.define(&param.name, val);
+                    env.define_new(&param.name, val);
                 }
 
                 if let FuncBody::Block(stmts) = &init_fn.body {
-                    match crate::interpreter::exec::exec_block(stmts, &mut init_env) {
+                    match crate::interpreter::exec::exec_block(stmts, env) {
                         Ok(()) | Err(Signal::Return(_)) => {}
-                        Err(e) => return Err(e),
+                        Err(e) => { env.pop_scope(); return Err(e); }
                     }
                 }
+                env.pop_scope();
                 // No need to copy back — self shares the same Rc<RefCell>, mutations are direct
             } else {
                 // No init — assign positional args to fields (skip for genetic classes)
@@ -826,11 +888,11 @@ pub fn call_method(
 
                     // FAST PATH: push/pop scope instead of env clone
                     env.push_scope();
-                    env.define("self", obj.clone());
+                    env.define_new("self", obj.clone());
 
                     for (i, param) in func.params.iter().enumerate() {
                         let val = if i < args.len() { args[i].clone() } else { Value::Nil };
-                        env.define(&param.name, val);
+                        env.define_new(&param.name, val);
                     }
 
                     let result = match &func.body {
