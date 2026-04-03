@@ -125,6 +125,11 @@ impl Environment {
 
     #[inline(always)]
     pub fn define(&mut self, name: &str, value: Value) {
+        // Check slot frame first
+        if let Some(idx) = self.find_slot(name) {
+            self.local_slots[idx] = value;
+            return;
+        }
         if self.scope_marks.is_empty() {
             self.globals.insert(name.to_string(), value);
         } else {
@@ -171,6 +176,10 @@ impl Environment {
 
     #[inline(always)]
     pub fn set(&mut self, name: &str, value: Value) -> bool {
+        if let Some(idx) = self.find_slot(name) {
+            self.local_slots[idx] = value;
+            return true;
+        }
         let len = self.locals.len();
         let mut i = len;
         while i > 0 {

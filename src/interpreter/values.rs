@@ -324,6 +324,25 @@ impl Value {
             (Value::String(a), Value::String(b)) => a == b,
             (Value::Char(a), Value::Char(b)) => a == b,
             (Value::Nil, Value::Nil) => true,
+            // Deep equality for lists
+            (Value::List(a), Value::List(b)) => {
+                let a = a.borrow();
+                let b = b.borrow();
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.equals(y))
+            }
+            // Deep equality for tuples
+            (Value::Tuple(a), Value::Tuple(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.equals(y))
+            }
+            // Deep equality for sets
+            (Value::Set(a), Value::Set(b)) => {
+                let a = a.borrow();
+                let b = b.borrow();
+                a.len() == b.len() && a.iter().all(|x| b.iter().any(|y| x.equals(y)))
+            }
+            // Ok/Err equality
+            (Value::Ok(a), Value::Ok(b)) => a.equals(b),
+            (Value::Err(a), Value::Err(b)) => a.equals(b),
             _ => false,
         }
     }

@@ -1,0 +1,47 @@
+// Test helpers — included by all exhaustive test files
+pass_count = 0
+fail_count = 0
+
+def assert_eq(actual, expected) {
+    if actual == expected {
+        pass_count += 1
+    } else {
+        fail_count += 1
+        print("FAIL: expected", expected, "got", actual)
+    }
+}
+
+def assert_true(val) {
+    if val == true {
+        pass_count += 1
+    } else {
+        fail_count += 1
+        print("FAIL: expected true, got", val)
+    }
+}
+
+def assert_false(val) {
+    if val == false {
+        pass_count += 1
+    } else {
+        fail_count += 1
+        print("FAIL: expected false, got", val)
+    }
+}
+
+def assert_nil(val) {
+    if val == nil {
+        pass_count += 1
+    } else {
+        fail_count += 1
+        print("FAIL: expected nil, got", val)
+    }
+}
+
+def report() {
+    total = pass_count + fail_count
+    print("{pass_count}/{total} passed, {fail_count} failed")
+    if fail_count == 0 {
+        print("ALL TESTS PASSED")
+    }
+}

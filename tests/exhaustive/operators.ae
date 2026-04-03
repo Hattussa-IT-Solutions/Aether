@@ -1,0 +1,132 @@
+// Exhaustive operator tests
+pass_count = 0
+fail_count = 0
+def assert_eq(actual, expected) {
+    if actual == expected { pass_count += 1 }
+    else { fail_count += 1; print("FAIL: expected", expected, "got", actual) }
+}
+def assert_true(v) { assert_eq(v, true) }
+def assert_false(v) { assert_eq(v, false) }
+
+// === Arithmetic: Int + Int ===
+assert_eq(1 + 2, 3)
+assert_eq(0 + 0, 0)
+assert_eq(-1 + 1, 0)
+assert_eq(1000000 + 1000000, 2000000)
+
+// === Arithmetic: Int + Float ===
+assert_eq(1 + 2.5, 3.5)
+assert_eq(0 + 0.0, 0.0)
+
+// === Arithmetic: Float + Float ===
+assert_eq(1.5 + 2.5, 4.0)
+
+// === Subtraction ===
+assert_eq(5 - 3, 2)
+assert_eq(3 - 5, -2)
+assert_eq(0 - 0, 0)
+assert_eq(5.0 - 2.5, 2.5)
+
+// === Multiplication ===
+assert_eq(3 * 4, 12)
+assert_eq(0 * 999, 0)
+assert_eq(-2 * 3, -6)
+assert_eq(-2 * -3, 6)
+assert_eq(2.5 * 4.0, 10.0)
+
+// === Division ===
+assert_eq(10 / 3, 3)
+assert_eq(10 / 2, 5)
+assert_eq(10.0 / 3.0, 10.0 / 3.0)
+assert_eq(0 / 5, 0)
+
+// === Modulo ===
+assert_eq(10 % 3, 1)
+assert_eq(10 % 5, 0)
+assert_eq(7 % 2, 1)
+
+// === Power ===
+assert_eq(2 ** 10, 1024)
+assert_eq(3 ** 0, 1)
+assert_eq(2 ** 1, 2)
+assert_eq(0 ** 5, 0)
+
+// === String concatenation ===
+assert_eq("hello" + " " + "world", "hello world")
+assert_eq("" + "", "")
+assert_eq("a" + "", "a")
+
+// === Comparison: Int ===
+assert_true(1 < 2)
+assert_false(2 < 1)
+assert_true(2 > 1)
+assert_false(1 > 2)
+assert_true(1 <= 1)
+assert_true(1 <= 2)
+assert_false(2 <= 1)
+assert_true(2 >= 2)
+assert_true(3 >= 2)
+assert_false(1 >= 2)
+assert_true(1 == 1)
+assert_false(1 == 2)
+assert_true(1 != 2)
+assert_false(1 != 1)
+
+// === Comparison: Float ===
+assert_true(1.0 < 2.0)
+assert_true(1.0 == 1.0)
+assert_false(1.0 != 1.0)
+
+// === Comparison: Int/Float mixed ===
+assert_true(1 < 2.0)
+assert_true(1.0 < 2)
+assert_true(1 == 1.0)
+
+// === Comparison: String ===
+assert_true("a" < "b")
+assert_true("abc" == "abc")
+assert_false("abc" == "def")
+
+// === Logical ===
+assert_true(true and true)
+assert_false(true and false)
+assert_false(false and true)
+assert_false(false and false)
+assert_true(true or false)
+assert_true(false or true)
+assert_true(true or true)
+assert_false(false or false)
+assert_false(not true)
+assert_true(not false)
+assert_true(true && true)
+assert_false(true && false)
+assert_true(true || false)
+
+// === Short-circuit ===
+assert_false(false and (1 / 0 == 0))
+assert_true(true or (1 / 0 == 0))
+
+// === Precedence ===
+assert_eq(2 + 3 * 4, 14)
+assert_eq((2 + 3) * 4, 20)
+assert_eq(10 - 2 * 3, 4)
+assert_eq(2 ** 3, 8)
+
+// === Equality edge cases ===
+assert_true(nil == nil)
+assert_false(nil == 0)
+assert_false(nil == false)
+assert_false(nil == "")
+assert_true(true == true)
+assert_true(false == false)
+assert_false(true == false)
+
+// === Unary ===
+assert_eq(-5, 0 - 5)
+assert_eq(-(-5), 5)
+assert_true(!false)
+assert_false(!true)
+
+total = pass_count + fail_count
+print("{pass_count}/{total} operator tests passed")
+if fail_count > 0 { print("{fail_count} FAILURES") }

@@ -1,0 +1,94 @@
+pass_count = 0
+fail_count = 0
+def assert_eq(actual, expected) {
+    if actual == expected { pass_count += 1 }
+    else { fail_count += 1; print("FAIL: expected", expected, "got", actual) }
+}
+def assert_true(v) { assert_eq(v, true) }
+
+// === Basic function ===
+def add(a, b) { return a + b }
+assert_eq(add(1, 2), 3)
+assert_eq(add(0, 0), 0)
+assert_eq(add(-1, 1), 0)
+
+// === Expression body ===
+def double(x) = x * 2
+assert_eq(double(5), 10)
+assert_eq(double(0), 0)
+
+// === Default parameters ===
+def greet(name, greeting = "Hello") {
+    return "{greeting}, {name}!"
+}
+assert_eq(greet("World"), "Hello, World!")
+assert_eq(greet("World", "Hi"), "Hi, World!")
+
+// === Implicit return ===
+def last_val(x) { x * 3 }
+assert_eq(last_val(7), 21)
+
+// === No return ===
+def void_fn() { }
+assert_eq(void_fn(), nil)
+
+// === Recursion ===
+def fib(n) {
+    if n <= 1 { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+assert_eq(fib(0), 0)
+assert_eq(fib(1), 1)
+assert_eq(fib(5), 5)
+assert_eq(fib(10), 55)
+
+// === Mutual recursion ===
+def is_even(n) { if n == 0 { return true }; return is_odd(n - 1) }
+def is_odd(n) { if n == 0 { return false }; return is_even(n - 1) }
+assert_true(is_even(4))
+assert_true(is_odd(3))
+
+// === Higher-order functions ===
+def apply(f, x) { return f(x) }
+assert_eq(apply(x -> x * 2, 5), 10)
+assert_eq(apply(x -> x + 1, 99), 100)
+
+// === Returning functions ===
+def multiplier(n) { return x -> x * n }
+double2 = multiplier(2)
+triple = multiplier(3)
+assert_eq(double2(5), 10)
+assert_eq(triple(5), 15)
+
+// === Lambdas ===
+sq = x -> x * x
+assert_eq(sq(5), 25)
+add2 = (a, b) -> a + b
+assert_eq(add2(3, 4), 7)
+
+// === Function as argument ===
+def map_val(f, vals) {
+    result = []
+    for v in vals { result.push(f(v)) }
+    return result
+}
+assert_eq(map_val(x -> x * 2, [1,2,3]), [2, 4, 6])
+
+// === Early return ===
+def early(x) {
+    if x > 10 { return "big" }
+    if x > 5 { return "medium" }
+    return "small"
+}
+assert_eq(early(20), "big")
+assert_eq(early(7), "medium")
+assert_eq(early(3), "small")
+
+// === Pipeline ===
+f = x -> x + 1
+g = x -> x * 2
+assert_eq(5 |> f |> g, 12)
+assert_eq(10 |> g |> f, 21)
+
+total = pass_count + fail_count
+print("{pass_count}/{total} function tests passed")

@@ -1,0 +1,135 @@
+pass_count = 0
+fail_count = 0
+def assert_eq(actual, expected) {
+    if actual == expected { pass_count += 1 }
+    else { fail_count += 1; print("FAIL: expected", expected, "got", actual) }
+}
+def assert_true(v) { assert_eq(v, true) }
+def assert_false(v) { assert_eq(v, false) }
+
+// === len ===
+assert_eq("".len(), 0)
+assert_eq("a".len(), 1)
+assert_eq("hello".len(), 5)
+assert_eq("hello world".len(), 11)
+
+// === upper/lower ===
+assert_eq("hello".upper(), "HELLO")
+assert_eq("HELLO".lower(), "hello")
+assert_eq("".upper(), "")
+assert_eq("".lower(), "")
+assert_eq("Hello World".upper(), "HELLO WORLD")
+assert_eq("Hello World".lower(), "hello world")
+
+// === trim ===
+assert_eq("  hello  ".trim(), "hello")
+assert_eq("hello".trim(), "hello")
+assert_eq("  ".trim(), "")
+assert_eq("".trim(), "")
+
+// === contains ===
+assert_true("hello world".contains("world"))
+assert_true("hello".contains(""))
+assert_false("hello".contains("xyz"))
+assert_true("".contains(""))
+
+// === starts_with / ends_with ===
+assert_true("hello".starts_with("hel"))
+assert_true("hello".starts_with(""))
+assert_false("hello".starts_with("xyz"))
+assert_true("hello".ends_with("llo"))
+assert_true("hello".ends_with(""))
+assert_false("hello".ends_with("xyz"))
+
+// === split ===
+assert_eq("a,b,c".split(",").len(), 3)
+assert_eq("hello".split(",").len(), 1)
+assert_eq("".split(",").len(), 1)
+
+// === replace ===
+assert_eq("hello world".replace("world", "aether"), "hello aether")
+assert_eq("aaa".replace("a", "b"), "bbb")
+assert_eq("".replace("a", "b"), "")
+
+// === repeat ===
+assert_eq("ab".repeat(3), "ababab")
+assert_eq("".repeat(5), "")
+assert_eq("x".repeat(0), "")
+
+// === reverse ===
+assert_eq("hello".reverse(), "olleh")
+assert_eq("".reverse(), "")
+assert_eq("a".reverse(), "a")
+assert_eq("ab".reverse(), "ba")
+
+// === is_empty ===
+assert_true("".is_empty())
+assert_false("a".is_empty())
+
+// === is_numeric ===
+assert_true("12345".is_numeric())
+assert_false("12.3".is_numeric())
+assert_false("abc".is_numeric())
+assert_false("".is_numeric())
+
+// === is_alpha ===
+assert_true("hello".is_alpha())
+assert_false("hello123".is_alpha())
+assert_false("".is_alpha())
+
+// === capitalize ===
+assert_eq("hello world".capitalize(), "Hello world")
+assert_eq("".capitalize(), "")
+assert_eq("a".capitalize(), "A")
+assert_eq("HELLO".capitalize(), "Hello")
+
+// === title ===
+assert_eq("hello world".title(), "Hello World")
+assert_eq("".title(), "")
+
+// === find / rfind ===
+assert_eq("hello".find("ll"), 2)
+assert_eq("hello".find("xyz"), nil)
+assert_eq("hello hello".rfind("hello"), 6)
+
+// === count ===
+assert_eq("hello".count("l"), 2)
+assert_eq("aaa".count("a"), 3)
+assert_eq("hello".count("xyz"), 0)
+
+// === pad_left / pad_right ===
+assert_eq("42".pad_left(5), "   42")
+assert_eq("hi".pad_right(5), "hi   ")
+
+// === remove_prefix / remove_suffix ===
+assert_eq("hello world".remove_prefix("hello "), "world")
+assert_eq("hello world".remove_suffix(" world"), "hello")
+assert_eq("hello".remove_prefix("xyz"), "hello")
+
+// === split_lines ===
+assert_eq("a\nb\nc".split_lines().len(), 3)
+
+// === to_int / to_float ===
+r = "42".to_int()
+match r { Ok(v) -> assert_eq(v, 42); _ -> { fail_count += 1 } }
+r2 = "abc".to_int()
+match r2 { Err(e) -> { pass_count += 1 }; _ -> { fail_count += 1 } }
+
+// === char_at ===
+assert_eq("hello".char_at(0), 'h')
+assert_eq("hello".char_at(4), 'o')
+
+// === bytes ===
+assert_eq("A".bytes().len(), 1)
+
+// === truncate ===
+assert_eq("hello world".truncate(8), "hello wo...")
+assert_eq("hi".truncate(10), "hi")
+
+// === interpolation ===
+name = "World"
+assert_eq("Hello, {name}!", "Hello, World!")
+assert_eq("{1 + 2}", "3")
+
+total = pass_count + fail_count
+print("{pass_count}/{total} string tests passed")

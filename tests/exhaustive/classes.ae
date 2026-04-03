@@ -1,0 +1,132 @@
+pass_count = 0
+fail_count = 0
+def assert_eq(actual, expected) {
+    if actual == expected { pass_count += 1 }
+    else { fail_count += 1; print("FAIL: expected", expected, "got", actual) }
+}
+def assert_true(v) { assert_eq(v, true) }
+def assert_false(v) { assert_eq(v, false) }
+
+// === Basic class ===
+class Dog {
+    name: Str
+    age: Int = 0
+    init(name) { self.name = name }
+    def bark() { return "{self.name}: Woof!" }
+}
+d = Dog("Rex")
+assert_eq(d.name, "Rex")
+assert_eq(d.age, 0)
+assert_eq(d.bark(), "Rex: Woof!")
+d.age = 5
+assert_eq(d.age, 5)
+
+// === Inheritance ===
+class Animal {
+    name: Str
+    init(name) { self.name = name }
+    def speak() { return "..." }
+}
+class Cat : Animal {
+    def speak() { return "{self.name}: Meow!" }
+}
+c = Cat("Whiskers")
+assert_eq(c.speak(), "Whiskers: Meow!")
+assert_eq(c.name, "Whiskers")
+
+// === Super ===
+class Base { def val() { return 1 } }
+class Child : Base { def val() { return super.val() + 10 } }
+assert_eq(Child().val(), 11)
+
+// === Static methods ===
+class MathUtil {
+    static def square(x) { return x * x }
+}
+assert_eq(MathUtil.square(5), 25)
+
+// === Computed properties ===
+class Rect {
+    w: Float
+    h: Float
+    area: Float => self.w * self.h
+    init(w, h) { self.w = w; self.h = h }
+}
+r = Rect(3.0, 4.0)
+assert_eq(r.area, 12.0)
+r.w = 10.0
+assert_eq(r.area, 40.0)
+
+// === Operator overloading ===
+class Vec2 {
+    x: Float
+    y: Float
+    init(x, y) { self.x = x; self.y = y }
+    operator +(other: Vec2) -> Vec2 { return Vec2(self.x + other.x, self.y + other.y) }
+    operator ==(other: Vec2) -> Bool { return self.x == other.x and self.y == other.y }
+}
+a = Vec2(1.0, 2.0)
+b = Vec2(3.0, 4.0)
+c2 = a + b
+assert_eq(c2.x, 4.0)
+assert_eq(c2.y, 6.0)
+assert_true(a == Vec2(1.0, 2.0))
+assert_false(a == b)
+
+// === Struct copy semantics ===
+struct Point { x: Float; y: Float }
+p1 = Point(1.0, 2.0)
+p2 = p1
+p2.x = 99.0
+assert_eq(p1.x, 1.0)
+assert_eq(p2.x, 99.0)
+
+// === Class reference semantics ===
+class Box { v: Int; init(v) { self.v = v } }
+b1 = Box(1)
+b2 = b1
+b2.v = 99
+assert_eq(b1.v, 99)
+
+// === Interface conformance ===
+interface Describable { def describe() -> Str }
+class Car impl Describable {
+    make: Str
+    init(make) { self.make = make }
+    def describe() -> Str { return self.make }
+}
+assert_eq(Car("Tesla").describe(), "Tesla")
+
+// === Enum variants ===
+def area(shape) {
+    match shape {
+        .Circle(r) -> 3.14 * r * r
+        .Rect(w, h) -> w * h
+        _ -> 0.0
+    }
+}
+assert_eq(area(.Rect(3.0, 4.0)), 12.0)
+
+// === Lazy property ===
+class Config { lazy data: Str => "loaded" }
+cfg = Config()
+assert_eq(cfg.data, "loaded")
+assert_eq(cfg.data, "loaded")
+
+// === Class with many fields ===
+class Big {
+    a: Int = 0
+    b: Int = 0
+    c: Int = 0
+    d: Int = 0
+    e: Int = 0
+}
+big = Big()
+big.a = 1
+big.e = 5
+assert_eq(big.a, 1)
+assert_eq(big.e, 5)
+assert_eq(big.c, 0)
+
+total = pass_count + fail_count
+print("{pass_count}/{total} class tests passed")
