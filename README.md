@@ -481,14 +481,7 @@ aether run examples/full_stack.ae
 
 ## VS Code Extension
 
-Syntax highlighting, snippets, and bracket matching for `.ae` files.
-
-```bash
-cd aether-vscode
-npm install
-npx vsce package
-# Install the generated .vsix in VS Code
-```
+Full IDE support in a separate repo: **[aether-vscode](https://github.com/Hattussa-IT-Solutions/aether-vscode)**
 
 Features:
 - Full syntax highlighting (keywords, operators, types, decorators, string interpolation)
