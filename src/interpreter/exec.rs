@@ -46,7 +46,6 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
         StmtKind::VarDecl { name, value, mutable: _, is_const: _, .. } => {
             let val = if let Some(expr) = value {
                 let v = eval_expr(expr, env)?;
-                // Struct copy-on-assign: deep clone struct instances
                 if let Value::StructInstance(inst) = &v {
                     Value::StructInstance(std::rc::Rc::new(std::cell::RefCell::new(inst.borrow().clone())))
                 } else {
@@ -55,6 +54,13 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
             } else {
                 Value::Nil
             };
+            // FAST PATH: slot-indexed assignment
+            if env.has_slots() {
+                if let Some(idx) = env.find_slot(name) {
+                    env.set_slot(idx, val);
+                    return Ok(());
+                }
+            }
             env.define_or_set(name, val);
             Ok(())
         }

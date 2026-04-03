@@ -4,14 +4,28 @@ use std::rc::Rc;
 
 use crate::interpreter::values::Value;
 
-/// High-performance variable scope using a flat Vec with scope boundary markers.
-/// Globals use HashMap; locals use a flat Vec scanned backwards.
-/// String allocations are minimized by reusing existing names on update.
+/// High-performance variable scope with slot-indexed locals.
+///
+/// Two modes:
+/// 1. SLOT MODE (fast path): local_slots is a pre-sized Vec<Value> indexed by integer.
+///    Used by the function call fast path when slot count is known.
+///    get_slot(i) / set_slot(i, v) are O(1) — no strings involved.
+///
+/// 2. NAME MODE (fallback): locals is a Vec<(String, Value)> scanned backwards.
+///    Used for closures, REPL, and any code not yet slot-resolved.
+///
+/// Globals always use HashMap (accessed infrequently after startup).
 #[derive(Debug, Clone)]
 pub struct Environment {
-    globals: HashMap<String, Value>,
+    pub globals: HashMap<String, Value>,
     locals: Vec<(String, Value)>,
     scope_marks: Vec<usize>,
+    /// Slot-indexed frame for the current function call (fast path).
+    pub local_slots: Vec<Value>,
+    /// Name-to-slot-index map for the current function.
+    slot_names: Option<HashMap<String, usize>>,
+    /// Saved slot frames from outer function calls.
+    slot_stack: Vec<(Vec<Value>, Option<HashMap<String, usize>>)>,
 }
 
 impl Environment {
@@ -20,12 +34,69 @@ impl Environment {
             globals: HashMap::with_capacity(128),
             locals: Vec::with_capacity(64),
             scope_marks: Vec::with_capacity(16),
+            local_slots: Vec::new(),
+            slot_names: None,
+            slot_stack: Vec::with_capacity(16),
         }
     }
 
     pub fn new_shared() -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self::new()))
     }
+
+    // ── Slot-indexed operations (fast path) ──────────────
+
+    /// Push a new slot frame with name map (for function call).
+    #[inline(always)]
+    pub fn push_slot_frame_with_names(&mut self, slot_count: usize, names: Option<HashMap<String, usize>>) {
+        let old_slots = std::mem::replace(&mut self.local_slots, vec![Value::Nil; slot_count]);
+        let old_names = std::mem::replace(&mut self.slot_names, names);
+        self.slot_stack.push((old_slots, old_names));
+    }
+
+    /// Push a new slot frame with the given capacity.
+    #[inline(always)]
+    pub fn push_slot_frame(&mut self, slot_count: usize) {
+        self.push_slot_frame_with_names(slot_count, None);
+    }
+
+    /// Pop the current slot frame, restoring the caller's frame.
+    #[inline(always)]
+    pub fn pop_slot_frame(&mut self) {
+        if let Some((old_slots, old_names)) = self.slot_stack.pop() {
+            self.local_slots = old_slots;
+            self.slot_names = old_names;
+        } else {
+            self.local_slots.clear();
+            self.slot_names = None;
+        }
+    }
+
+    /// Find slot index by name. O(n) but n is typically 1-5.
+    #[inline(always)]
+    pub fn find_slot(&self, name: &str) -> Option<usize> {
+        self.slot_names.as_ref().and_then(|m| m.get(name).copied())
+    }
+
+    /// Get a value by slot index. O(1).
+    #[inline(always)]
+    pub fn get_slot(&self, index: usize) -> &Value {
+        &self.local_slots[index]
+    }
+
+    /// Set a value by slot index. O(1).
+    #[inline(always)]
+    pub fn set_slot(&mut self, index: usize, value: Value) {
+        self.local_slots[index] = value;
+    }
+
+    /// Check if we're in slot mode (have an active slot frame).
+    #[inline(always)]
+    pub fn has_slots(&self) -> bool {
+        !self.local_slots.is_empty()
+    }
+
+    // ── Name-based operations (fallback) ─────────────────
 
     #[inline(always)]
     pub fn push_scope(&mut self) {
@@ -39,15 +110,12 @@ impl Environment {
         }
     }
 
-    /// Define a variable in the current scope. Avoids String allocation
-    /// if the variable already exists in the current scope (update in place).
     #[inline(always)]
     pub fn define(&mut self, name: &str, value: Value) {
         if self.scope_marks.is_empty() {
             self.globals.insert(name.to_string(), value);
         } else {
             let scope_start = unsafe { *self.scope_marks.last().unwrap_unchecked() };
-            // Scan current scope only — find existing to update
             let len = self.locals.len();
             let mut i = len;
             while i > scope_start {
@@ -61,8 +129,6 @@ impl Environment {
         }
     }
 
-    /// Fast define — caller guarantees this is a NEW variable (not update).
-    /// Avoids the backwards scan entirely.
     #[inline(always)]
     pub fn define_new(&mut self, name: &str, value: Value) {
         if self.scope_marks.is_empty() {
@@ -72,9 +138,10 @@ impl Environment {
         }
     }
 
-    /// Get a variable. Returns clone of the value.
     #[inline(always)]
     pub fn get(&self, name: &str) -> Option<Value> {
+        // Check slot frame first (slot names stored by convention)
+        // Then check named locals
         let len = self.locals.len();
         let mut i = len;
         while i > 0 {
@@ -86,23 +153,6 @@ impl Environment {
         self.globals.get(name).cloned()
     }
 
-    /// Get a variable that's expected to be in the top scope (common case for
-    /// function parameters and loop variables). Only scans the top scope.
-    #[inline(always)]
-    pub fn get_local(&self, name: &str) -> Option<Value> {
-        let scope_start = self.scope_marks.last().copied().unwrap_or(0);
-        let len = self.locals.len();
-        let mut i = len;
-        while i > scope_start {
-            i -= 1;
-            if self.locals[i].0.as_str() == name {
-                return Some(self.locals[i].1.clone());
-            }
-        }
-        None
-    }
-
-    /// Set the LAST occurrence of a variable (update in place).
     #[inline(always)]
     pub fn set(&mut self, name: &str, value: Value) -> bool {
         let len = self.locals.len();
@@ -123,7 +173,6 @@ impl Environment {
 
     #[inline(always)]
     pub fn define_or_set(&mut self, name: &str, value: Value) {
-        // Try to update existing local
         let len = self.locals.len();
         let mut i = len;
         while i > 0 {
@@ -147,6 +196,9 @@ impl Environment {
             globals: self.globals.clone(),
             locals: Vec::new(),
             scope_marks: Vec::new(),
+            local_slots: Vec::new(),
+            slot_names: None,
+            slot_stack: Vec::new(),
         }
     }
 

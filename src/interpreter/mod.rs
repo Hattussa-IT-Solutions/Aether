@@ -3,6 +3,7 @@ pub mod values;
 pub mod eval;
 pub mod exec;
 pub mod parallel;
+pub mod resolver;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,6 +14,10 @@ use crate::parser::ast::Program;
 
 /// Run a parsed Aether program.
 pub fn interpret(program: &Program, env: &mut Environment) -> Result<(), String> {
+    // Run the resolver to assign slot indices for fast variable access
+    let slot_map = resolver::resolve(program);
+    eval::set_slot_map(slot_map);
+
     match exec::exec_block(&program.statements, env) {
         Ok(()) => Ok(()),
         Err(Signal::Throw(val)) => Err(format!("Unhandled error: {}", val)),

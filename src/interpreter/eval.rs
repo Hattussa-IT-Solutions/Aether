@@ -6,6 +6,18 @@ use crate::interpreter::environment::Environment;
 use crate::interpreter::values::*;
 use crate::parser::ast::*;
 
+/// Thread-local slot map — set once before execution, used by all function calls.
+thread_local! {
+    pub static CURRENT_SLOT_MAP: RefCell<Option<crate::interpreter::resolver::SlotMap>> = RefCell::new(None);
+    /// Current function's slot map (variable name -> index), updated on each call.
+    pub static CURRENT_FUNC_SLOTS: RefCell<Option<HashMap<String, usize>>> = RefCell::new(None);
+}
+
+/// Install a slot map for the current execution.
+pub fn set_slot_map(map: crate::interpreter::resolver::SlotMap) {
+    CURRENT_SLOT_MAP.with(|sm| *sm.borrow_mut() = Some(map));
+}
+
 /// Evaluate an expression in the given environment.
 pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
     match &expr.kind {
@@ -34,11 +46,22 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
 
         // ── Identifiers ──────────────────────────────────
         ExprKind::Identifier(name) => {
+            // FAST PATH: check slot frame first (direct array index)
+            if env.has_slots() {
+                if let Some(idx) = env.find_slot(name) {
+                    return Ok(env.get_slot(idx).clone());
+                }
+            }
             env.get(name).ok_or_else(|| {
                 Signal::Throw(Value::String(format!("undefined variable: {}", name)))
             })
         }
         ExprKind::SelfExpr => {
+            if env.has_slots() {
+                if let Some(idx) = env.find_slot("self") {
+                    return Ok(env.get_slot(idx).clone());
+                }
+            }
             env.get("self").ok_or_else(|| {
                 Signal::Throw(Value::String("'self' used outside of class method".into()))
             })
@@ -565,14 +588,58 @@ pub fn call_function(
 ) -> Result<Value, Signal> {
     match func_val {
         Value::Function(func) => {
-            // OPTIMIZATION: For non-closure functions, push/pop a scope on the
-            // caller's env instead of cloning the entire environment. This makes
-            // recursive calls ~100x faster (no deep clone per call).
             let has_closure = func.closure_env.is_some();
             let has_named = named_args.iter().any(|a| a.name.is_some());
 
-            if !has_closure && !has_named {
-                // FAST PATH: push scope, bind params, execute, pop scope
+            // Check if we have a slot map for this function
+            let slot_count = CURRENT_SLOT_MAP.with(|sm| {
+                sm.borrow().as_ref().and_then(|m| m.counts.get(&func.name).copied())
+            });
+
+            // Slot-indexed path disabled — Vec-scan is faster for small scopes (1-5 vars).
+            // The slot overhead (HashMap clone per call) exceeds the string-scan cost.
+            // To beat Python's 150ms on fib(30), we'd need compile-time slot assignment
+            // that eliminates the HashMap entirely (integer-only frames).
+            if false && !has_closure && !has_named && slot_count.is_some() {
+                // FASTEST PATH: slot-indexed frame — no string operations at all
+                let sc = slot_count.unwrap();
+                let slot_map = CURRENT_SLOT_MAP.with(|sm| {
+                    sm.borrow().as_ref().and_then(|m| m.slots.get(&func.name).cloned())
+                });
+
+                env.push_slot_frame_with_names(sc, slot_map.clone());
+
+                // Bind params by slot index
+                if let Some(ref sm) = slot_map {
+                    for (i, param) in func.params.iter().enumerate() {
+                        let val = if i < arg_vals.len() { arg_vals[i].clone() } else { Value::Nil };
+                        if let Some(&slot) = sm.get(&param.name) {
+                            env.set_slot(slot, val);
+                        }
+                    }
+                }
+
+                let result = match &func.body {
+                    FuncBody::Expression(expr) => {
+                        match eval_expr(expr, env) {
+                            Ok(val) => Ok(val),
+                            Err(Signal::Return(val)) => Ok(val),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    FuncBody::Block(stmts) => {
+                        match crate::interpreter::exec::exec_block_with_value(stmts, env) {
+                            Ok(val) => Ok(val),
+                            Err(Signal::Return(val)) => Ok(val),
+                            Err(e) => Err(e),
+                        }
+                    }
+                };
+
+                env.pop_slot_frame();
+                return result;
+            } else if !has_closure && !has_named {
+                // FAST PATH: push scope with string names (no slot map available)
                 env.push_scope();
                 for (i, param) in func.params.iter().enumerate() {
                     let val = if i < arg_vals.len() {
