@@ -11,3 +11,5 @@ pub mod bridge;
 pub mod repl;
 pub mod diagnostics;
 pub mod forge;
+pub mod lsp;
+pub mod dap;

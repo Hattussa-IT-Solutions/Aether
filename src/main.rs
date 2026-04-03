@@ -15,6 +15,8 @@ mod bridge;
 mod repl;
 mod diagnostics;
 mod forge;
+mod lsp;
+mod dap;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -70,6 +72,15 @@ fn main() {
                 process::exit(1);
             }
             jit_file(&args[2]);
+        }
+        "lsp" => {
+            if let Err(e) = lsp::server::run_lsp() {
+                eprintln!("LSP error: {}", e);
+                process::exit(1);
+            }
+        }
+        "dap" | "debug" => {
+            dap::server::run_dap();
         }
         "--version" | "-V" => {
             println!("aether {}", env!("CARGO_PKG_VERSION"));
