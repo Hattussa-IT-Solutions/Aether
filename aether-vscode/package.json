@@ -3,8 +3,16 @@
   "displayName": "Aether Language",
   "description": "Full IDE support for the Aether programming language — IntelliSense, debugging, syntax highlighting",
   "version": "0.2.0",
-  "publisher": "hattussa-it",
+  "publisher": "HattussaIT",
   "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hattussa-IT-Solutions/Aether"
+  },
+  "homepage": "https://github.com/Hattussa-IT-Solutions/Aether",
+  "bugs": {
+    "url": "https://github.com/Hattussa-IT-Solutions/Aether/issues"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },

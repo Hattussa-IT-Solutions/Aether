@@ -378,8 +378,23 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
         }
 
         StmtKind::Use { path, alias } => {
-            // Basic module loading — for now just register the path as a namespace
             let name = alias.as_ref().unwrap_or_else(|| path.last().unwrap());
+
+            // Handle "use python.X" — import Python module via pyo3
+            if path.first().map(|s| s.as_str()) == Some("python") && path.len() >= 2 {
+                let py_module = path[1..].join(".");
+                match crate::bridge::python::python_import(&py_module) {
+                    Ok(val) => {
+                        env.define(name, val);
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        return Err(Signal::Throw(Value::String(format!("import error: {}", e))));
+                    }
+                }
+            }
+
+            // Default: register as a namespace string
             env.define(name, Value::String(format!("module:{}", path.join("."))));
             Ok(())
         }

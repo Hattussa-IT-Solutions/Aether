@@ -1,0 +1,20 @@
+// Aether Python Bridge — Advanced Demo
+// Uses Python's json and os modules (built-in, no pip needed)
+
+use python.json as pyjson
+use python.os as pyos
+use python.sys as pysys
+
+// JSON encoding/decoding via Python
+data = pyjson.dumps({"name": "Aether", "version": 1, "features": ["parallel", "genetic", "gpu"]})
+print("JSON:", data)
+
+parsed = pyjson.loads(data)
+print("Parsed:", parsed)
+
+// OS info via Python
+print("CWD:", pyos.getcwd())
+print("Python version:", pysys.version)
+print("Platform:", pysys.platform)
+
+print("Done!")

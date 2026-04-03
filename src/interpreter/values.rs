@@ -113,6 +113,9 @@ pub enum Value {
     /// Result Ok/Err.
     Ok(Box<Value>),
     Err(Box<Value>),
+
+    /// Wrapped Python object (via pyo3).
+    PythonObject(crate::bridge::python::PythonObjectWrapper),
 }
 
 /// A user-defined function captured at runtime.
@@ -289,6 +292,7 @@ impl fmt::Display for Value {
             }
             Value::Ok(val) => write!(f, "Ok({})", val),
             Value::Err(val) => write!(f, "Err({})", val),
+            Value::PythonObject(wrapper) => write!(f, "{}", wrapper),
         }
     }
 }

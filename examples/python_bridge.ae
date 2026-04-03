@@ -1,0 +1,36 @@
+// Aether Python Bridge Demo
+// Uses Python's built-in math module (no pip install needed)
+
+use python.math as pymath
+
+// Basic math functions
+result = pymath.sqrt(144.0)
+print("sqrt(144) =", result)
+
+result2 = pymath.pow(2.0, 10.0)
+print("2^10 =", result2)
+
+// Constants
+pi = pymath.pi
+print("PI =", pi)
+
+e = pymath.e
+print("E =", e)
+
+// Trigonometry
+print("sin(pi/2) =", pymath.sin(pi / 2.0))
+print("cos(0) =", pymath.cos(0.0))
+
+// Factorial
+fact = pymath.factorial(10)
+print("10! =", fact)
+
+// Floor/ceil
+print("floor(3.7) =", pymath.floor(3.7))
+print("ceil(3.2) =", pymath.ceil(3.2))
+
+// Log
+print("log(e) =", pymath.log(e))
+print("log2(256) =", pymath.log2(256.0))
+
+print("Done!")

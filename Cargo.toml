@@ -18,6 +18,6 @@ toml = "0.8"
 thiserror = "1"
 lsp-types = "0.95"
 lsp-server = "0.7"
+pyo3 = { version = "0.22", features = ["auto-initialize"] }
 
 [dev-dependencies]
-# pyo3 = { version = "0.21", features = ["auto-initialize"] }

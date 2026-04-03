@@ -666,6 +666,11 @@ pub fn call_function(
                 class: None,
             }))))
         }
+        // Call a Python callable directly
+        Value::PythonObject(wrapper) => {
+            crate::bridge::python::python_call_direct(wrapper, arg_vals)
+                .map_err(|e| Signal::Throw(Value::String(e)))
+        }
         _ => Err(Signal::Throw(Value::String(format!("{} is not callable", func_val)))),
     }
 }
@@ -1086,6 +1091,11 @@ pub fn call_method(
                 };
             }
             Err(Signal::Throw(Value::String(format!("undefined static method '{}' on {}", method, cls.name))))
+        }
+        // Python object method calls
+        Value::PythonObject(wrapper) => {
+            crate::bridge::python::python_call(wrapper, method, args)
+                .map_err(|e| Signal::Throw(Value::String(e)))
         }
         _ => {
             // Extension methods on primitives
@@ -1547,6 +1557,11 @@ fn access_field(obj: &Value, field: &str) -> Result<Value, Signal> {
                 }),
                 Err(_) => Err(Signal::Throw(Value::String(format!("unknown field '{}' on tuple", field)))),
             }
+        }
+        // Python object attribute access
+        Value::PythonObject(wrapper) => {
+            crate::bridge::python::python_getattr(wrapper, field)
+                .map_err(|e| Signal::Throw(Value::String(e)))
         }
         _ => Err(Signal::Throw(Value::String(format!("cannot access field '{}' on {}", field, obj)))),
     }
