@@ -1,0 +1,29 @@
+// Bar chart
+viz_bar(["Mon", "Tue", "Wed", "Thu", "Fri"], [120, 150, 180, 90, 200], "Daily Sales")
+
+// Histogram
+data = []
+for i in 0..500 {
+    data.push(random_int(0, 100))
+}
+viz_hist(data, 10, "Random Distribution")
+
+// Line chart
+x = []
+y = []
+for i in 0..20 {
+    x.push(i)
+    y.push(i * i)
+}
+viz_line(x, y, "Squares")
+
+// Table
+viz_table(["Name", "Lang", "Stars"], [["Aether", "Rust", "1000"], ["Python", "C", "5000"], ["Go", "Go", "3000"]])
+
+// Sparkline
+viz_sparkline([1, 4, 9, 16, 25, 16, 9, 4, 1])
+
+// Function plot
+viz_plot_fn(x -> sin(x), -3.14, 3.14, "sin(x)")
+
+print("Done!")

@@ -28,6 +28,9 @@ pub mod iter_mod;
 pub mod math_extended;
 pub mod time_extended;
 pub mod json_extended;
+pub mod math_advanced;
+pub mod data;
+pub mod viz;
 
 use crate::interpreter::environment::Environment;
 
@@ -61,4 +64,7 @@ pub fn register_all(env: &mut Environment) {
     math_extended::register(env);
     time_extended::register(env);
     json_extended::register(env);
+    math_advanced::register(env);
+    data::register(env);
+    viz::register(env);
 }

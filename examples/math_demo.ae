@@ -1,0 +1,64 @@
+// Aether Advanced Math Demo
+print("=== Statistics ===")
+data = [23, 45, 12, 67, 34, 89, 56, 78, 43, 65, 32, 87]
+print("Data:", data)
+print("Mean:", stats_mean(data))
+print("Median:", stats_median(data))
+print("Std:", stats_std(data))
+print("Variance:", stats_variance(data))
+print("Percentile 95:", stats_percentile(data, 95.0))
+print("Quartiles:", stats_quartiles(data))
+print("IQR:", stats_iqr(data))
+print("Outliers:", stats_outliers(data))
+print("Cumulative sum:", stats_cumsum(data))
+print("Differences:", stats_diff(data))
+print("Moving avg(3):", stats_moving_average(data, 3))
+
+print("\n=== Linear Regression ===")
+x_data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+y_data = [2.1, 3.9, 6.2, 7.8, 10.1, 12.3, 13.9, 16.2, 17.8, 20.1]
+fit = math_linear_regression(x_data, y_data)
+print("y =", fit["slope"], "* x +", fit["intercept"])
+print("R² =", fit["r_squared"])
+
+print("\n=== Calculus ===")
+deriv = math_derivative(x -> x ** 3, 2.0)
+print("d/dx(x³) at x=2:", deriv, "(expected: 12.0)")
+
+integral = math_integrate(x -> sin(x), 0.0, PI)
+print("∫sin(x)dx from 0 to π:", integral, "(expected: 2.0)")
+
+root = math_find_root(x -> x ** 2 - 4, 0.0, 5.0)
+print("Root of x²-4:", root, "(expected: 2.0)")
+
+minimum = math_find_min(x -> (x - 3.0) ** 2 + 1.0, 0.0, 6.0)
+print("Min of (x-3)²+1:", minimum)
+
+print("\n=== Linear Algebra ===")
+solution = math_solve([[2.0, 1.0], [5.0, 3.0]], [4.0, 7.0])
+print("Solution to 2x+y=4, 5x+3y=7:", solution)
+
+det = math_det([[1.0, 2.0], [3.0, 4.0]])
+print("det([[1,2],[3,4]]):", det)
+
+print("\n=== Distance & Similarity ===")
+d = math_distance([1.0, 0.0], [0.0, 1.0])
+print("Euclidean distance:", d)
+cos_sim = math_cosine_similarity([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
+print("Cosine similarity:", cos_sim)
+
+print("\n=== Correlation ===")
+r = stats_correlation(x_data, y_data)
+print("Pearson r:", r)
+
+print("\n=== Number Theory ===")
+print("Primes up to 50:", math_primes_up_to(50))
+print("Prime factors of 360:", math_prime_factors(360))
+print("C(10,3):", math_binomial(10, 3))
+
+print("\n=== K-Means Clustering ===")
+points = [[1.0, 1.0], [1.5, 2.0], [2.0, 1.5], [8.0, 8.0], [8.5, 9.0], [9.0, 8.5]]
+result = math_kmeans(points, 2)
+print("Cluster labels:", result["labels"])
+
+print("\nDone!")

@@ -1,0 +1,38 @@
+// Create sample data
+csv = "name,age,score,grade\nAlice,30,95.2,A\nBob,25,87.8,B\nCharlie,35,92.1,A\nDiana,28,78.5,C\nEve,22,88.9,B\nFrank,31,91.3,A"
+
+df = data_from_csv(csv)
+print("Rows:", data_rows(df))
+print("Columns:", data_columns(df))
+data_print(df)
+
+// Statistics
+data_describe(df)
+
+// Filter
+young = data_where(df, "age", "<", 30)
+print("\nYoung (age < 30):")
+data_print(young)
+
+// Sort
+sorted = data_sort_by(df, "score", true)
+print("\nSorted by score (desc):")
+data_print(sorted)
+
+// Group counts
+print("\nGrade distribution:")
+data_print(data_value_counts(df, "grade"))
+
+// Column stats
+ages = data_column(df, "age")
+print("\nAge stats:")
+print("Ages:", ages)
+
+// Join
+csv2 = "name,department\nAlice,Engineering\nBob,Marketing\nCharlie,Engineering\nDiana,Sales"
+df2 = data_from_csv(csv2)
+joined = data_join(df, df2, "name")
+print("\nJoined:")
+data_print(joined)
+
+print("\nDone!")
