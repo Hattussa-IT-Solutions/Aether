@@ -187,7 +187,7 @@ fn command_loop(state: &mut DebugState, env: &mut Environment, rl: &mut DefaultE
     state.show_current();
 
     loop {
-        let prompt = format!("(adb) ");
+        let prompt = "(adb) ".to_string();
         let readline = rl.readline(&prompt);
         match readline {
             Ok(line) => {

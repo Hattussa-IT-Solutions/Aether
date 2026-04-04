@@ -2,9 +2,25 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::interpreter::environment::Environment;
-use crate::interpreter::eval::*;
+use crate::interpreter::eval::{self, *};
 use crate::interpreter::values::*;
 use crate::parser::ast::*;
+
+/// Tick the instruction counter for loop iteration.
+#[inline(always)]
+fn tick_loop(env: &mut Environment) -> Result<(), Signal> {
+    env.instruction_count += 1;
+    if env.instruction_count & 0xFFF == 0 && env.instruction_count > env.max_instructions {
+        Err(Signal::Throw(Value::String(format!(
+            "Execution limit exceeded ({} instructions). \
+             Program may have an infinite loop. \
+             Use --max-instructions to increase the limit.",
+            env.max_instructions
+        ))))
+    } else {
+        Ok(())
+    }
+}
 
 /// Execute a block of statements.
 pub fn exec_block(stmts: &[Stmt], env: &mut Environment) -> Result<(), Signal> {
@@ -165,6 +181,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                     } else {
                         if *inclusive { if i < e { break; } } else { if i <= e { break; } }
                     }
+                    tick_loop(env)?;
                     env.define(name, Value::Int(i));
                     match exec_block(body, env) {
                         Ok(()) => {}
@@ -184,6 +201,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
             env.push_scope();
             let mut idx = 0;
             for item in items.iter().step_by(step_size) {
+                tick_loop(env)?;
                 match pattern {
                     ForPattern::Single(name) => {
                         env.define(name, item.clone());
@@ -219,6 +237,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                 LoopKind::Times(count_expr) => {
                     let count = eval_expr(count_expr, env)?.as_int().unwrap_or(0);
                     for _ in 0..count {
+                        tick_loop(env)?;
                         match exec_block(body, env) {
                             Ok(()) => {}
                             Err(Signal::Break(ref l)) if l == label || l.is_none() => break,
@@ -229,6 +248,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                 }
                 LoopKind::While(cond_expr) => {
                     loop {
+                        tick_loop(env)?;
                         let cond = eval_expr(cond_expr, env)?;
                         if !cond.is_truthy() { break; }
                         match exec_block(body, env) {
@@ -241,6 +261,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                 }
                 LoopKind::Infinite => {
                     loop {
+                        tick_loop(env)?;
                         match exec_block(body, env) {
                             Ok(()) => {}
                             Err(Signal::Break(ref l)) if l == label || l.is_none() => break,
@@ -457,6 +478,7 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
 
         StmtKind::MutationAtomic { body } => {
             // Snapshot all instance fields in all reachable variables for rollback
+            #[allow(clippy::type_complexity)]
             let snapshots: Vec<(std::rc::Rc<std::cell::RefCell<InstanceValue>>, HashMap<String, Value>)> =
                 env.all_values().into_iter().filter_map(|v| {
                     if let Value::Instance(inst_rc) = v {

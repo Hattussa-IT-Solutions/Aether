@@ -214,14 +214,15 @@ fn render_line_chart(x_vals: &[f64], y_vals: &[f64], title: Option<&str>) -> Res
     let left_space = 0usize;
     let right_space = available.saturating_sub(x_label_left.len() + x_label_right.len() + x_label_mid.len() + 2);
     let mid_space = right_space / 2;
+    let empty = String::new();
     println!(
         "  {:pad$}{}{}{}{:>mid$}{}",
-        "",
+        empty,
         x_label_left,
         " ".repeat(mid_space.saturating_sub(x_label_mid.len() / 2)),
         x_label_mid,
         x_label_right,
-        "",
+        empty,
         pad = pad,
         mid = mid_space + x_label_mid.len(),
     );
@@ -493,6 +494,7 @@ fn render_table(headers: &[String], rows: &[Vec<String>]) -> Result<Value, Strin
     // Data rows
     for row in rows {
         let mut row_str = String::from("│");
+        #[allow(clippy::needless_range_loop)]
         for j in 0..ncols {
             let cell = row.get(j).map(|s| s.as_str()).unwrap_or("");
             // right-align if looks numeric
@@ -571,9 +573,9 @@ fn viz_heatmap_impl(args: Vec<Value>) -> Result<Value, String> {
     // Legend
     println!();
     let mut legend = String::from("  Scale: ");
-    for i in 0..n_levels {
+    for (i, block) in blocks.iter().enumerate().take(n_levels) {
         let color = heatmap_color(i, n_levels);
-        legend.push_str(&format!("{}{}{}", color, blocks[i], RESET));
+        legend.push_str(&format!("{}{}{}", color, block, RESET));
     }
     legend.push_str(&format!("  {:.2} … {:.2}", global_min, global_max));
     println!("{}", legend);
@@ -704,54 +706,54 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
     env.define("viz_bar", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_bar".into(),
         arity: None,
-        func: Box::new(|args| viz_bar_impl(args)),
+        func: Box::new(viz_bar_impl),
     })));
 
     env.define("viz_line", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_line".into(),
         arity: None,
-        func: Box::new(|args| viz_line_impl(args)),
+        func: Box::new(viz_line_impl),
     })));
 
     env.define("viz_hist", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_hist".into(),
         arity: None,
-        func: Box::new(|args| viz_hist_impl(args)),
+        func: Box::new(viz_hist_impl),
     })));
 
     env.define("viz_scatter", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_scatter".into(),
         arity: None,
-        func: Box::new(|args| viz_scatter_impl(args)),
+        func: Box::new(viz_scatter_impl),
     })));
 
     env.define("viz_table", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_table".into(),
         arity: None,
-        func: Box::new(|args| viz_table_impl(args)),
+        func: Box::new(viz_table_impl),
     })));
 
     env.define("viz_heatmap", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_heatmap".into(),
         arity: None,
-        func: Box::new(|args| viz_heatmap_impl(args)),
+        func: Box::new(viz_heatmap_impl),
     })));
 
     env.define("viz_progress", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_progress".into(),
         arity: None,
-        func: Box::new(|args| viz_progress_impl(args)),
+        func: Box::new(viz_progress_impl),
     })));
 
     env.define("viz_plot_fn", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_plot_fn".into(),
         arity: None,
-        func: Box::new(|args| viz_plot_fn_impl(args)),
+        func: Box::new(viz_plot_fn_impl),
     })));
 
     env.define("viz_sparkline", Value::NativeFunction(Rc::new(NativeFunctionValue {
         name: "viz_sparkline".into(),
         arity: None,
-        func: Box::new(|args| viz_sparkline_impl(args)),
+        func: Box::new(viz_sparkline_impl),
     })));
 }

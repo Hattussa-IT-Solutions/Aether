@@ -6,11 +6,18 @@ use crate::interpreter::environment::Environment;
 use crate::interpreter::values::*;
 use crate::parser::ast::*;
 
-/// Thread-local slot map — set once before execution, used by all function calls.
+/// Maximum recursion depth before stack overflow error.
+pub const MAX_CALL_DEPTH: usize = 1000;
+
+/// Maximum instruction count before execution is halted (100M default).
+pub const DEFAULT_MAX_INSTRUCTIONS: u64 = 100_000_000;
+
+// Thread-local slot map — set once before execution, used by all function calls.
 thread_local! {
-    pub static CURRENT_SLOT_MAP: RefCell<Option<crate::interpreter::resolver::SlotMap>> = RefCell::new(None);
-    /// Current function's slot map (variable name -> index), updated on each call.
-    pub static CURRENT_FUNC_SLOTS: RefCell<Option<HashMap<String, usize>>> = RefCell::new(None);
+    pub static CURRENT_SLOT_MAP: RefCell<Option<crate::interpreter::resolver::SlotMap>> = const { RefCell::new(None) };
+    pub static CURRENT_FUNC_SLOTS: RefCell<Option<HashMap<String, usize>>> = const { RefCell::new(None) };
+    /// Configurable instruction limit (set via CLI).
+    static CONFIGURED_MAX_INSTRUCTIONS: RefCell<u64> = const { RefCell::new(DEFAULT_MAX_INSTRUCTIONS) };
 }
 
 /// Install a slot map for the current execution.
@@ -18,7 +25,57 @@ pub fn set_slot_map(map: crate::interpreter::resolver::SlotMap) {
     CURRENT_SLOT_MAP.with(|sm| *sm.borrow_mut() = Some(map));
 }
 
+/// Reset execution counters on the environment (call at start of program execution).
+pub fn reset_execution_counters(env: &mut Environment) {
+    env.call_depth = 0;
+    env.instruction_count = 0;
+    env.max_instructions = CONFIGURED_MAX_INSTRUCTIONS.with(|mi| *mi.borrow());
+}
+
+/// Set the maximum instruction limit (from CLI).
+pub fn set_max_instructions(limit: u64) {
+    CONFIGURED_MAX_INSTRUCTIONS.with(|mi| *mi.borrow_mut() = limit);
+}
+
+/// Increment call depth on the environment; returns error if exceeded.
+#[inline(always)]
+fn enter_call(env: &mut Environment) -> Result<(), Signal> {
+    env.call_depth += 1;
+    if env.call_depth > MAX_CALL_DEPTH {
+        Err(Signal::Throw(Value::String(format!(
+            "Stack overflow: maximum recursion depth ({}) exceeded. \
+             Your function may have infinite recursion.",
+            MAX_CALL_DEPTH
+        ))))
+    } else {
+        Ok(())
+    }
+}
+
+/// Decrement call depth on the environment.
+#[inline(always)]
+fn exit_call(env: &mut Environment) {
+    if env.call_depth > 0 { env.call_depth -= 1; }
+}
+
+/// Increment instruction counter on the environment; returns error if limit exceeded.
+#[inline(always)]
+fn tick_instruction(env: &mut Environment) -> Result<(), Signal> {
+    env.instruction_count += 1;
+    // Only check limit every 4096 instructions to reduce overhead
+    if env.instruction_count & 0xFFF == 0 && env.instruction_count > env.max_instructions {
+        return Err(Signal::Throw(Value::String(format!(
+            "Execution limit exceeded ({} instructions). \
+             Program may have an infinite loop. \
+             Use --max-instructions to increase the limit.",
+            env.max_instructions
+        ))));
+    }
+    Ok(())
+}
+
 /// Evaluate an expression in the given environment.
+#[inline(always)]
 pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
     match &expr.kind {
         // ── Literals ─────────────────────────────────────
@@ -222,7 +279,7 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
                 }
                 (Value::String(s), Value::Int(i)) => {
                     let i = if *i < 0 { s.len() as i64 + i } else { *i } as usize;
-                    s.chars().nth(i).map(|c| Value::Char(c)).ok_or_else(|| {
+                    s.chars().nth(i).map(Value::Char).ok_or_else(|| {
                         Signal::Throw(Value::String(format!("string index {} out of bounds", i)))
                     })
                 }
@@ -594,6 +651,8 @@ pub fn call_function(
 ) -> Result<Value, Signal> {
     match func_val {
         Value::Function(func) => {
+            tick_instruction(env)?;
+            enter_call(env)?;
             let has_closure = func.closure_env.is_some();
             let has_named = named_args.iter().any(|a| a.name.is_some());
 
@@ -647,13 +706,19 @@ pub fn call_function(
                         }
                     };
                     env.pop_slot_frame();
+                    exit_call(env);
                     return result;
                 }
             }
 
             // SLOW PATH: closure or named args — need env clone
             let mut call_env = if let Some(closure) = &func.closure_env {
-                closure.borrow().clone()
+                let mut ce = closure.borrow().clone();
+                // Propagate execution counters from caller
+                ce.call_depth = env.call_depth;
+                ce.instruction_count = env.instruction_count;
+                ce.max_instructions = env.max_instructions;
+                ce
             } else {
                 env.snapshot()
             };
@@ -673,7 +738,7 @@ pub fn call_function(
                 call_env.define(&param.name, val);
             }
 
-            match &func.body {
+            let result = match &func.body {
                 FuncBody::Expression(expr) => {
                     let result = eval_expr(expr, &mut call_env);
                     match result {
@@ -690,7 +755,11 @@ pub fn call_function(
                         Err(e) => Err(e),
                     }
                 }
-            }
+            };
+            // Propagate instruction count back to caller env
+            env.instruction_count = call_env.instruction_count;
+            exit_call(env);
+            result
         }
         Value::NativeFunction(nf) => {
             (nf.func)(arg_vals).map_err(|e| Signal::Throw(Value::String(e)))
@@ -1315,7 +1384,7 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                     Value::String(s.replace(old, new))
                 }
                 "chars" => {
-                    let chars: Vec<Value> = s.chars().map(|c| Value::Char(c)).collect();
+                    let chars: Vec<Value> = s.chars().map(Value::Char).collect();
                     Value::List(Rc::new(RefCell::new(chars)))
                 }
                 "repeat" => {
@@ -1402,7 +1471,7 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                         Value::String(s.clone())
                     } else {
                         let pad_count = width - s.chars().count();
-                        let padding: String = std::iter::repeat(pad_char).take(pad_count).collect();
+                        let padding: String = std::iter::repeat_n(pad_char, pad_count).collect();
                         Value::String(padding + s)
                     }
                 }
@@ -1419,7 +1488,7 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                         Value::String(s.clone())
                     } else {
                         let pad_count = width - s.chars().count();
-                        let padding: String = std::iter::repeat(pad_char).take(pad_count).collect();
+                        let padding: String = std::iter::repeat_n(pad_char, pad_count).collect();
                         Value::String(s.clone() + &padding)
                     }
                 }
@@ -1439,15 +1508,15 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                         let total_pad = width - len;
                         let left_pad = total_pad / 2;
                         let right_pad = total_pad - left_pad;
-                        let left: String = std::iter::repeat(pad_char).take(left_pad).collect();
-                        let right: String = std::iter::repeat(pad_char).take(right_pad).collect();
+                        let left: String = std::iter::repeat_n(pad_char, left_pad).collect();
+                        let right: String = std::iter::repeat_n(pad_char, right_pad).collect();
                         Value::String(left + s + &right)
                     }
                 }
                 "remove_prefix" => {
                     let prefix = args.first().and_then(|a| if let Value::String(s) = a { Some(s.as_str()) } else { None }).unwrap_or("");
-                    if s.starts_with(prefix) {
-                        Value::String(s[prefix.len()..].to_string())
+                    if let Some(stripped) = s.strip_prefix(prefix) {
+                        Value::String(stripped.to_string())
                     } else {
                         Value::String(s.clone())
                     }
@@ -1875,7 +1944,7 @@ fn builtin_method(obj: &Value, method: &str, args: &[Value]) -> Result<Option<Va
                     } else {
                         nums.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                         let mid = nums.len() / 2;
-                        if nums.len() % 2 == 0 {
+                        if nums.len().is_multiple_of(2) {
                             Value::Float((nums[mid - 1] + nums[mid]) / 2.0)
                         } else {
                             Value::Float(nums[mid])
@@ -2475,7 +2544,7 @@ pub fn value_to_iter(val: &Value) -> Result<Vec<Value>, Signal> {
         Value::List(items) => Ok(items.borrow().clone()),
         Value::Set(items) => Ok(items.borrow().clone()),
         Value::Tuple(items) => Ok(items.clone()),
-        Value::String(s) => Ok(s.chars().map(|c| Value::Char(c)).collect()),
+        Value::String(s) => Ok(s.chars().map(Value::Char).collect()),
         Value::Range { start, end, inclusive, step } => {
             let mut items = Vec::new();
             let mut i = *start;
@@ -2905,8 +2974,8 @@ fn eval_evolve_block(
 
         // Elitism: carry best N individuals unchanged
         let elite_n = elitism_count.min(scored.len());
-        for i in 0..elite_n {
-            next_gen.push(scored[i].1.clone());
+        for item in scored.iter().take(elite_n) {
+            next_gen.push(item.1.clone());
         }
 
         // Fill the rest with crossover + mutation
@@ -2998,7 +3067,7 @@ fn select_parent(
             let total = n * (n + 1.0) / 2.0;
             let mut pick = rng_next(seed) * total;
             for (rank, (_, individual)) in scored.iter().enumerate() {
-                let weight = (n - rank as f64) as f64;
+                let weight = n - rank as f64;
                 pick -= weight;
                 if pick <= 0.0 {
                     return individual.clone();

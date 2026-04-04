@@ -1,0 +1,122 @@
+// Edge case tests: String stress
+print("=== String Tests ===")
+
+// 1. Build large strings via concatenation in a loop
+s = ""
+for i in 0..1000 {
+    s = s + "x"
+}
+print("built string len:", s.len())
+
+// Build with repeat
+big = "ab".repeat(500)
+print("repeat len:", big.len())
+
+// 2. String interpolation with complex expressions
+x = 42
+y = 3.14
+name = "Aether"
+print("simple: {name}")
+print("math: {x * 2 + 1}")
+print("nested call: {str(x)}")
+print("method in interp: {name.upper()}")
+print("concat in interp: {"hello" + " " + "world"}")
+
+// Interpolation with various types
+flag = true
+print("bool: {flag}")
+print("nil: {nil ?? "none"}")
+list_val = [1, 2, 3]
+print("list: {list_val}")
+
+// 3. String method chaining
+result = "  Hello, World!  ".trim().upper().replace("WORLD", "AETHER")
+print("chained:", result)
+
+result2 = "hello".upper().lower().upper()
+print("chain2:", result2)
+
+// Chaining with split and join
+words = "one two three four five".split(" ")
+print("words:", words)
+rejoined = words.join("-")
+print("rejoined:", rejoined)
+
+// 4. ASCII edge cases (staying safe with ASCII)
+empty = ""
+print("empty len:", empty.len())
+print("empty upper:", empty.upper())
+print("empty lower:", empty.lower())
+print("empty trim:", empty.trim())
+print("empty is_empty:", empty.is_empty())
+print("empty reverse:", empty.reverse())
+print("empty contains x:", empty.contains("x"))
+print("empty starts_with x:", empty.starts_with("x"))
+print("empty ends_with x:", empty.ends_with("x"))
+
+// Single character strings
+single = "a"
+print("single len:", single.len())
+print("single upper:", single.upper())
+print("single reverse:", single.reverse())
+print("single repeat 5:", single.repeat(5))
+
+// 5. String with special characters
+special = "Hello\tWorld\n"
+print("special:", special)
+escaped = "quotes: \"hello\""
+print(escaped)
+backslash = "path\\to\\file"
+print(backslash)
+
+// 6. Contains / starts_with / ends_with edge cases
+s = "abcdefghijklmnopqrstuvwxyz"
+print("contains empty:", s.contains(""))
+print("starts_with empty:", s.starts_with(""))
+print("ends_with z:", s.ends_with("z"))
+print("contains xyz:", s.contains("xyz"))
+print("contains full:", s.contains("abcdefghijklmnopqrstuvwxyz"))
+
+// 7. Replace edge cases
+s2 = "aaa"
+print("replace all a:", s2.replace("a", "b"))
+print("replace empty:", "hello".replace("", "x"))
+
+// 8. Split edge cases
+print("split empty delim:", "hello".split(""))
+print("split no match:", "hello".split("x"))
+print("split multi:", "a,,b,,c".split(",,"))
+
+// 9. Many string operations in sequence
+s3 = "Hello World From Aether Language"
+print("lower:", s3.lower())
+print("upper:", s3.upper())
+print("len:", s3.len())
+print("words:", s3.split(" ").len())
+print("reverse:", s3.reverse())
+print("starts H:", s3.starts_with("H"))
+print("ends e:", s3.ends_with("e"))
+
+// 10. String comparison
+print("abc == abc:", "abc" == "abc")
+print("abc != def:", "abc" != "def")
+print("empty == empty:", "" == "")
+
+// 11. chars() method
+chars = "Hello".chars()
+print("chars:", chars)
+print("chars len:", chars.len())
+print("first char:", chars[0])
+print("last char:", chars[4])
+
+// 12. Large string operations
+large = "x".repeat(10000)
+print("large len:", large.len())
+print("large contains x:", large.contains("x"))
+print("large upper len:", large.upper().len())
+
+// 13. Repeat edge cases
+print("repeat 0:", "hello".repeat(0))
+print("repeat 1:", "hello".repeat(1))
+
+print("=== All string tests passed ===")

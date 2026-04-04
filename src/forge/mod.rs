@@ -71,7 +71,7 @@ def test_hello() {
     ).map_err(|e| e.to_string())?;
 
     println!("  Created new Aether project: {}", name);
-    println!("");
+    println!();
     println!("  To get started:");
     println!("    cd {}", name);
     println!("    aether run");
@@ -248,7 +248,7 @@ pub fn run_tests(dir: &str) -> Result<(), String> {
     let mut errors = Vec::new();
 
     for path in &test_files {
-        let source = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let source = fs::read_to_string(path).map_err(|e| e.to_string())?;
         let filename = path.display().to_string();
 
         let mut scanner = crate::lexer::scanner::Scanner::new(&source, filename.clone());
@@ -285,7 +285,7 @@ pub fn run_tests(dir: &str) -> Result<(), String> {
         }
     }
 
-    println!("");
+    println!();
     let total = passed + failed;
     if failed == 0 {
         println!("  \x1b[32m{} tests passed\x1b[0m", total);

@@ -3,6 +3,7 @@ use crate::interpreter::values::*;
 
 /// Register extended math functions.
 pub fn register_math(env: &mut crate::interpreter::environment::Environment) {
+    #[allow(clippy::type_complexity)]
     let fns: Vec<(&str, Box<dyn Fn(Vec<Value>) -> Result<Value, String>>)> = vec![
         ("asin", Box::new(|a| Ok(Value::Float(a[0].as_float().unwrap_or(0.0).asin())))),
         ("acos", Box::new(|a| Ok(Value::Float(a[0].as_float().unwrap_or(0.0).acos())))),

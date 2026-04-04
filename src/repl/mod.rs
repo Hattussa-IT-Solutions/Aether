@@ -87,11 +87,8 @@ pub fn start_repl() {
                         let mut s = Scanner::new(expr_str, "<repl>".to_string());
                         let tokens = s.scan_tokens();
                         let mut p = Parser::new(tokens);
-                        match p.parse_program() {
-                            Ok(program) => {
-                                let _ = interpreter::interpret(&program, &mut env);
-                            }
-                            Err(_) => {}
+                        if let Ok(program) = p.parse_program() {
+                            let _ = interpreter::interpret(&program, &mut env);
                         }
                         let elapsed = start.elapsed();
                         println!("  Time: {:.3}ms", elapsed.as_secs_f64() * 1000.0);

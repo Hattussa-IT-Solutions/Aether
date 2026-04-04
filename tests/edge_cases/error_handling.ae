@@ -1,0 +1,202 @@
+// Edge case tests: Error handling
+print("=== Error Handling Tests ===")
+
+// 1. Try/catch basic usage
+print("--- Basic try/catch ---")
+try {
+    print("  inside try")
+    throw "test error"
+    print("  should not reach here")
+} catch any as e {
+    print("  caught:", e)
+}
+print("  after try/catch")
+
+// 2. Try/catch with finally
+print("--- Try/catch/finally ---")
+try {
+    print("  try block")
+    throw "error with finally"
+} catch any as e {
+    print("  caught:", e)
+} finally {
+    print("  finally always runs")
+}
+
+// 3. Try block without error
+print("--- Try without error ---")
+try {
+    x = 10 + 20
+    print("  no error, x =", x)
+} catch any as e {
+    print("  should not reach catch")
+}
+print("  continues normally")
+
+// 4. Nested try/catch
+print("--- Nested try/catch ---")
+try {
+    print("  outer try")
+    try {
+        print("  inner try")
+        throw "inner error"
+    } catch any as e {
+        print("  inner caught:", e)
+    }
+    print("  outer continues after inner")
+} catch any as e {
+    print("  outer caught (should not happen):", e)
+}
+
+// Nested: inner throws, caught by outer
+print("--- Nested rethrow ---")
+try {
+    try {
+        throw "deep error"
+    } catch any as e {
+        print("  inner caught, rethrowing")
+        throw "rethrown: {e}"
+    }
+} catch any as e {
+    print("  outer caught:", e)
+}
+
+// 5. Division by zero caught
+print("--- Division by zero ---")
+try {
+    result = 10 / 0
+    print("  should not print:", result)
+} catch any as e {
+    print("  caught div by zero:", e)
+}
+
+// Division by zero in expression
+try {
+    x = 100
+    y = 0
+    z = x / y
+    print("  should not print")
+} catch any as e {
+    print("  caught:", e)
+}
+
+// 6. Stack overflow caught
+print("--- Stack overflow ---")
+def recurse_forever() {
+    recurse_forever()
+}
+try {
+    recurse_forever()
+} catch any as e {
+    print("  caught stack overflow (truncated):", str(e).slice(0, 50))
+}
+
+// 7. Error in function called from try
+print("--- Error from function ---")
+def risky_function(x) {
+    if x < 0 {
+        throw "negative value: {x}"
+    }
+    return x * 2
+}
+
+try {
+    print("  risky(5):", risky_function(5))
+    print("  risky(-1):", risky_function(-1))
+} catch any as e {
+    print("  caught:", e)
+}
+
+// 8. Multiple try/catch in sequence
+print("--- Sequential try/catch ---")
+for i in 0..5 {
+    try {
+        if i == 2 {
+            throw "error at {i}"
+        }
+        print("  ok at {i}")
+    } catch any as e {
+        print("  caught at {i}:", e)
+    }
+}
+
+// 9. Try/catch in a loop
+print("--- Try/catch in loop ---")
+errors = 0
+successes = 0
+for i in 0..10 {
+    try {
+        if i % 3 == 0 {
+            throw "bad"
+        }
+        successes += 1
+    } catch any as e {
+        errors += 1
+    }
+}
+print("  successes:", successes, "errors:", errors)
+
+// 10. Result type handling
+print("--- Result types ---")
+def safe_sqrt(x) {
+    if x < 0 {
+        return Err("cannot sqrt negative")
+    }
+    return Ok(sqrt(float(x)))
+}
+
+r1 = safe_sqrt(25)
+r2 = safe_sqrt(-4)
+match r1 {
+    Ok(val) -> print("  sqrt(25) =", val)
+    Err(msg) -> print("  error:", msg)
+}
+match r2 {
+    Ok(val) -> print("  sqrt(-4) =", val)
+    Err(msg) -> print("  error:", msg)
+}
+
+// 11. Nil coalescing as error avoidance
+print("--- Nil coalescing ---")
+a = nil
+b = a ?? "fallback_a"
+print("  nil ?? fallback:", b)
+
+c = 42
+d = c ?? "fallback_c"
+print("  42 ?? fallback:", d)
+
+// Chain of coalescing
+e = nil
+f = nil
+g = e ?? f ?? "final fallback"
+print("  chain coalesce:", g)
+
+// 12. Throw with string interpolation
+print("--- Throw with interpolation ---")
+try {
+    code = 404
+    msg = "not found"
+    throw "Error {code}: {msg}"
+} catch any as e {
+    print("  caught:", e)
+}
+
+// 13. Error in deeply nested call
+print("--- Deep call error ---")
+def level3() {
+    throw "deep error"
+}
+def level2() {
+    return level3()
+}
+def level1() {
+    return level2()
+}
+try {
+    level1()
+} catch any as e {
+    print("  caught deep:", e)
+}
+
+print("=== All error handling tests passed ===")

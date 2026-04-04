@@ -24,7 +24,7 @@ fn value_to_json(val: &Value) -> String {
         Value::String(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
         Value::Nil => "null".to_string(),
         Value::List(items) => {
-            let parts: Vec<String> = items.borrow().iter().map(|v| value_to_json(v)).collect();
+            let parts: Vec<String> = items.borrow().iter().map(value_to_json).collect();
             format!("[{}]", parts.join(", "))
         }
         Value::Map(map) => {

@@ -25,6 +25,7 @@ pub struct Stmt {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum StmtKind {
     /// Expression as a statement.
     Expression(Expr),

@@ -14,7 +14,7 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
     env.define("stats_median", native("stats_median", 1, |a| {
         let mut vals = extract_floats(&a[0])?;
         if vals.is_empty() { return Ok(Value::Float(0.0)); }
-        vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let mid = vals.len() / 2;
         if vals.len() % 2 == 0 { Ok(Value::Float((vals[mid - 1] + vals[mid]) / 2.0)) }
         else { Ok(Value::Float(vals[mid])) }
@@ -237,6 +237,7 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
             if aug[i][i].abs() < 1e-12 { return Err("singular matrix".into()); }
             for k in (i + 1)..n {
                 let factor = aug[k][i] / aug[i][i];
+                #[allow(clippy::needless_range_loop)]
                 for j in i..=n { aug[k][j] -= factor * aug[i][j]; }
             }
         }
@@ -270,8 +271,8 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
             // Assign
             for i in 0..n {
                 let mut best_d = f64::INFINITY;
-                for j in 0..k {
-                    let d: f64 = (0..dims).map(|d| (data[i][d] - centroids[j][d]).powi(2)).sum();
+                for (j, centroid) in centroids.iter().enumerate().take(k) {
+                    let d: f64 = (0..dims).map(|d| (data[i][d] - centroid[d]).powi(2)).sum();
                     if d < best_d { best_d = d; labels[i] = j; }
                 }
             }
@@ -285,7 +286,7 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
             }
             for j in 0..k {
                 if counts[j] > 0 {
-                    for d in 0..dims { new_centroids[j][d] /= counts[j] as f64; }
+                    for item in new_centroids[j].iter_mut().take(dims) { *item /= counts[j] as f64; }
                 }
             }
             centroids = new_centroids;
@@ -393,7 +394,7 @@ fn std_dev(vals: &[f64]) -> f64 {
 fn percentile(vals: &[f64], p: f64) -> f64 {
     if vals.is_empty() { return 0.0; }
     let mut sorted = vals.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let idx = (p / 100.0 * (sorted.len() - 1) as f64).round() as usize;
     sorted[idx.min(sorted.len() - 1)]
 }

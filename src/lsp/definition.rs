@@ -18,8 +18,7 @@ pub fn get_definition(
         let trimmed = src_line.trim();
 
         // Function definition: def name(
-        if trimmed.starts_with("def ") {
-            let after_def = &trimmed[4..];
+        if let Some(after_def) = trimmed.strip_prefix("def ") {
             if let Some(paren) = after_def.find('(') {
                 let fname = after_def[..paren].trim();
                 if fname == word {
@@ -35,8 +34,7 @@ pub fn get_definition(
         }
 
         // Class definition: class Name
-        if trimmed.starts_with("class ") {
-            let after_class = &trimmed[6..];
+        if let Some(after_class) = trimmed.strip_prefix("class ") {
             let cname = after_class.split_whitespace().next().unwrap_or("");
             if cname == word {
                 return Some(GotoDefinitionResponse::Scalar(Location {
@@ -50,8 +48,8 @@ pub fn get_definition(
         }
 
         // Struct definition
-        if trimmed.starts_with("struct ") {
-            let name = trimmed[7..].split_whitespace().next().unwrap_or("");
+        if let Some(after_struct) = trimmed.strip_prefix("struct ") {
+            let name = after_struct.split_whitespace().next().unwrap_or("");
             if name == word {
                 return Some(GotoDefinitionResponse::Scalar(Location {
                     uri: uri.clone(),
@@ -64,8 +62,8 @@ pub fn get_definition(
         }
 
         // Enum definition
-        if trimmed.starts_with("enum ") {
-            let name = trimmed[5..].split_whitespace().next().unwrap_or("");
+        if let Some(after_enum) = trimmed.strip_prefix("enum ") {
+            let name = after_enum.split_whitespace().next().unwrap_or("");
             if name == word {
                 return Some(GotoDefinitionResponse::Scalar(Location {
                     uri: uri.clone(),

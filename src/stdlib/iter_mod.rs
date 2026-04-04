@@ -231,7 +231,7 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
                 if !groups.contains_key(&key_str) {
                     key_order.push(key_str.clone());
                 }
-                groups.entry(key_str).or_insert_with(Vec::new).push(item);
+                groups.entry(key_str).or_default().push(item);
             }
 
             let mut result_map = HashMap::new();

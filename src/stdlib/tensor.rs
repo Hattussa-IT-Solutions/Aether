@@ -45,6 +45,7 @@ impl TensorData {
     }
 
     pub fn len(&self) -> usize { self.data.len() }
+    pub fn is_empty(&self) -> bool { self.data.is_empty() }
     pub fn ndim(&self) -> usize { self.shape.len() }
 
     pub fn sum(&self) -> f64 { self.data.iter().sum() }
@@ -154,7 +155,7 @@ impl fmt::Display for TensorData {
             }
             write!(f, "], shape={:?})", self.shape)
         } else if self.shape.len() == 2 {
-            write!(f, "Tensor([\n")?;
+            writeln!(f, "Tensor([")?;
             let cols = self.shape[1];
             for r in 0..self.shape[0].min(6) {
                 write!(f, "  [")?;
@@ -165,9 +166,9 @@ impl fmt::Display for TensorData {
                 if cols > 6 { write!(f, ", ...")?; }
                 write!(f, "]")?;
                 if r < self.shape[0] - 1 { write!(f, ",")?; }
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
-            if self.shape[0] > 6 { write!(f, "  ...\n")?; }
+            if self.shape[0] > 6 { writeln!(f, "  ...")?; }
             write!(f, "], shape={:?})", self.shape)
         } else {
             write!(f, "Tensor(shape={:?}, len={})", self.shape, self.data.len())
@@ -242,7 +243,7 @@ pub fn register_tensor(env: &mut crate::interpreter::environment::Environment) {
         func: Box::new(|args| {
             let a = extract_tensor(&args[0])?;
             let b = extract_tensor(&args[1])?;
-            let result = a.elementwise(&b, |x, y| x + y).map_err(|e| e)?;
+            let result = a.elementwise(&b, |x, y| x + y)?;
             Ok(tensor_to_value(result))
         }),
     })));
@@ -252,7 +253,7 @@ pub fn register_tensor(env: &mut crate::interpreter::environment::Environment) {
         func: Box::new(|args| {
             let a = extract_tensor(&args[0])?;
             let b = extract_tensor(&args[1])?;
-            let result = a.elementwise(&b, |x, y| x * y).map_err(|e| e)?;
+            let result = a.elementwise(&b, |x, y| x * y)?;
             Ok(tensor_to_value(result))
         }),
     })));
@@ -262,7 +263,7 @@ pub fn register_tensor(env: &mut crate::interpreter::environment::Environment) {
         func: Box::new(|args| {
             let a = extract_tensor(&args[0])?;
             let b = extract_tensor(&args[1])?;
-            let result = a.matmul(&b).map_err(|e| e)?;
+            let result = a.matmul(&b)?;
             Ok(tensor_to_value(result))
         }),
     })));
@@ -271,7 +272,7 @@ pub fn register_tensor(env: &mut crate::interpreter::environment::Environment) {
         name: "tensor_transpose".into(), arity: Some(1),
         func: Box::new(|args| {
             let t = extract_tensor(&args[0])?;
-            let result = t.transpose().map_err(|e| e)?;
+            let result = t.transpose()?;
             Ok(tensor_to_value(result))
         }),
     })));
@@ -281,7 +282,7 @@ pub fn register_tensor(env: &mut crate::interpreter::environment::Environment) {
         func: Box::new(|args| {
             let t = extract_tensor(&args[0])?;
             let shape = extract_shape(&args[1])?;
-            let result = t.reshape(shape).map_err(|e| e)?;
+            let result = t.reshape(shape)?;
             Ok(tensor_to_value(result))
         }),
     })));

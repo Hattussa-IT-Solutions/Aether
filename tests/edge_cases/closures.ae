@@ -1,0 +1,118 @@
+// Edge case tests: Closures and higher-order functions
+print("=== Closure Tests ===")
+
+// 1. Function returning lambda that captures variable
+def make_adder(n) {
+    return x -> x + n
+}
+add5 = make_adder(5)
+add10 = make_adder(10)
+add0 = make_adder(0)
+
+result1 = add5(100)
+result2 = add10(100)
+result3 = add0(42)
+print("add5(100):", result1)
+print("add10(100):", result2)
+print("add0(42):", result3)
+
+// Multiple closures from the same factory
+adders = []
+for i in 0..5 {
+    adders.push(make_adder(i))
+}
+for i in 0..5 {
+    print("adder[{i}](10) =", adders[i](10))
+}
+
+// 2. Function returning lambda that captures multiple variables
+def make_linear(m, b) {
+    return x -> m * x + b
+}
+line1 = make_linear(2, 3)
+line2 = make_linear(-1, 10)
+print("2x+3 at x=5:", line1(5))
+print("-x+10 at x=3:", line2(3))
+
+// 3. Closures inside loops
+fns = []
+for i in 0..10 {
+    fns.push(x -> x + i)
+}
+// Verify each closure captured its own i
+print("closure[0](0):", fns[0](0))
+print("closure[5](0):", fns[5](0))
+print("closure[9](0):", fns[9](0))
+
+// Closures used with map/filter
+multipliers = [1, 2, 3, 4, 5]
+results = []
+for m in multipliers {
+    fn = x -> x * m
+    results.push(fn(10))
+}
+print("multiplier results:", results)
+
+// 4. Nested functions and lambdas
+def outer_fn() {
+    def inner_fn(x) {
+        return x * 2
+    }
+    return inner_fn(21)
+}
+print("nested fn:", outer_fn())
+
+// Validator using closures with simple expressions
+def make_range_check(min_val, max_val) {
+    return val -> if val >= min_val and val <= max_val then "ok" else "out of range"
+}
+range_check = make_range_check(0, 100)
+print("range_check(50):", range_check(50))
+print("range_check(200):", range_check(200))
+
+// 5. Lambdas passed to higher-order functions
+nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+evens = nums.filter(x -> x % 2 == 0)
+print("evens:", evens)
+
+doubled = nums.map(x -> x * 2)
+print("doubled:", doubled)
+
+total = nums.reduce(0, (acc, x) -> acc + x)
+print("sum:", total)
+
+product = nums.reduce(1, (acc, x) -> acc * x)
+print("product:", product)
+
+// Chained higher-order functions
+result = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x -> x % 2 == 0).map(x -> x * x)
+print("even squares:", result)
+
+// 6. Lambda as function argument
+def apply_twice(fn, val) {
+    return fn(fn(val))
+}
+print("double twice(3):", apply_twice(x -> x * 2, 3))
+print("inc twice(10):", apply_twice(x -> x + 1, 10))
+
+// 7. Closures returning closures
+def make_power_fn(exp) {
+    return x -> x ** exp
+}
+square = make_power_fn(2)
+cube = make_power_fn(3)
+print("square(5):", square(5))
+print("cube(3):", cube(3))
+
+// 8. Many closures (stress test)
+many_fns = []
+for i in 0..100 {
+    many_fns.push(x -> x + i)
+}
+sum_check = 0
+for i in 0..100 {
+    sum_check += many_fns[i](0)
+}
+print("sum of 0..99:", sum_check)
+
+print("=== All closure tests passed ===")

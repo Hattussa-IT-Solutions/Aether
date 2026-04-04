@@ -1,0 +1,188 @@
+// Edge case tests: Numeric and type edge cases
+print("=== Math and Type Tests ===")
+
+// 1. Large integer operations
+print("--- Large Integers ---")
+print("2^10:", 2 ** 10)
+print("2^20:", 2 ** 20)
+print("2^30:", 2 ** 30)
+print("2^40:", 2 ** 40)
+print("2^50:", 2 ** 50)
+
+// Large multiplication
+big = 1000000
+print("1M * 1M:", big * big)
+
+// Large addition
+x = 999999999
+print("999999999 + 1:", x + 1)
+
+// Negative large
+print("-2^30:", -(2 ** 30))
+
+// 2. Float precision
+print("--- Float Precision ---")
+print("0.1 + 0.2:", 0.1 + 0.2)
+print("1.0 / 3.0:", 1.0 / 3.0)
+print("1.0 / 7.0:", 1.0 / 7.0)
+
+// Small floats
+print("1e-10:", 0.0000000001)
+print("1.0 / 1000000:", 1.0 / 1000000.0)
+
+// Float comparison (exact)
+a = 1.0
+b = 1.0
+print("1.0 == 1.0:", a == b)
+
+// Very large floats
+print("1e15:", 1000000000000000.0)
+
+// 3. Mixed int/float operations
+print("--- Mixed Operations ---")
+print("5 + 3.0:", 5 + 3.0)
+print("10 / 3:", 10 / 3)
+print("10.0 / 3:", 10.0 / 3)
+print("10 / 3.0:", 10 / 3.0)
+print("2 ** 0.5:", 2 ** 0.5)
+
+// Int arithmetic
+print("7 % 3:", 7 % 3)
+print("-7 % 3:", -7 % 3)
+print("0 % 5:", 0 % 5)
+
+// 4. Boolean operations
+print("--- Boolean Operations ---")
+print("true and true:", true and true)
+print("true and false:", true and false)
+print("false and true:", false and true)
+print("false and false:", false and false)
+
+print("true or true:", true or true)
+print("true or false:", true or false)
+print("false or true:", false or true)
+print("false or false:", false or false)
+
+print("not true:", not true)
+print("not false:", not false)
+
+// Boolean with comparison
+print("5 > 3 and 2 < 4:", 5 > 3 and 2 < 4)
+print("5 > 3 or 2 > 4:", 5 > 3 or 2 > 4)
+print("not (5 > 3):", not (5 > 3))
+
+// Chained comparisons via and
+x = 5
+print("0 < x and x < 10:", 0 < x and x < 10)
+print("0 < x and x < 3:", 0 < x and x < 3)
+
+// 5. Nil handling
+print("--- Nil Handling ---")
+n = nil
+print("nil:", n)
+print("nil == nil:", nil == nil)
+print("nil != 0:", nil != 0)
+print("nil != false:", nil != false)
+print("nil != \"\":", nil != "")
+
+// Nil coalescing
+print("nil ?? 42:", nil ?? 42)
+print("nil ?? nil ?? 99:", nil ?? nil ?? 99)
+print("5 ?? 42:", 5 ?? 42)
+
+// 6. Type conversions
+print("--- Type Conversions ---")
+// int()
+print("int(3.7):", int(3.7))
+print("int(3.2):", int(3.2))
+print("int(-2.8):", int(-2.8))
+print("int(\"123\"):", int("123"))
+
+// float()
+print("float(5):", float(5))
+print("float(0):", float(0))
+print("float(-3):", float(-3))
+
+// str()
+print("str(42):", str(42))
+print("str(3.14):", str(3.14))
+print("str(true):", str(true))
+print("str(false):", str(false))
+print("str(nil):", str(nil))
+
+// 7. Comparison operators
+print("--- Comparisons ---")
+print("1 == 1:", 1 == 1)
+print("1 != 2:", 1 != 2)
+print("1 < 2:", 1 < 2)
+print("2 > 1:", 2 > 1)
+print("1 <= 1:", 1 <= 1)
+print("1 >= 1:", 1 >= 1)
+print("1 <= 2:", 1 <= 2)
+print("2 >= 1:", 2 >= 1)
+
+// String comparison
+print("\"a\" == \"a\":", "a" == "a")
+print("\"a\" != \"b\":", "a" != "b")
+
+// 8. Math functions
+print("--- Math Functions ---")
+print("abs(-5):", abs(-5))
+print("abs(5):", abs(5))
+print("abs(0):", abs(0))
+
+print("sqrt(4.0):", sqrt(4.0))
+print("sqrt(0.0):", sqrt(0.0))
+print("sqrt(1.0):", sqrt(1.0))
+
+print("PI:", PI)
+
+// Power operator
+print("2 ** 0:", 2 ** 0)
+print("2 ** 1:", 2 ** 1)
+print("0 ** 0:", 0 ** 0)
+print("1 ** 100:", 1 ** 100)
+
+// 9. Arithmetic edge cases
+print("--- Arithmetic Edge Cases ---")
+print("0 * 1000000:", 0 * 1000000)
+print("1 * 0:", 1 * 0)
+print("-1 * -1:", -1 * -1)
+print("0 + 0:", 0 + 0)
+print("0 - 0:", 0 - 0)
+
+// 10. Order of operations
+print("--- Order of Operations ---")
+print("2 + 3 * 4:", 2 + 3 * 4)
+print("(2 + 3) * 4:", (2 + 3) * 4)
+print("2 ** 3 ** 2:", 2 ** 3 ** 2)
+print("10 - 3 - 2:", 10 - 3 - 2)
+print("10 / 2 * 3:", 10 / 2 * 3)
+
+// 11. Assignment operators
+print("--- Assignment Operators ---")
+v = 10
+v += 5
+print("10 += 5:", v)
+v -= 3
+print("-= 3:", v)
+v *= 2
+print("*= 2:", v)
+v /= 4
+print("/= 4:", v)
+v %= 5
+print("%= 5:", v)
+
+// 12. Numeric to boolean-like usage
+print("--- Truthy/Falsy ---")
+if 0 == 0 {
+    print("0 == 0 is true")
+}
+if 1 != 0 {
+    print("1 != 0 is true")
+}
+if "" == "" {
+    print("empty strings are equal")
+}
+
+print("=== All math and type tests passed ===")

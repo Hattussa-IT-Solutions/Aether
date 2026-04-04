@@ -471,7 +471,7 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
 
             // Compute column widths: max of header len and cell display len (capped).
             let widths: Vec<usize> = cols.iter().map(|col| {
-                let header_w = col.len().min(MAX_COL).max(MIN_COL);
+                let header_w = col.len().clamp(MIN_COL, MAX_COL);
                 let data_w = rows.iter().map(|row| {
                     cell_display(&cell_val(row, col)).len().min(MAX_COL)
                 }).max().unwrap_or(MIN_COL);
@@ -705,10 +705,7 @@ pub fn register(env: &mut crate::interpreter::environment::Environment) {
             let result: Vec<Value> = rows.into_iter().map(|row| {
                 if let Value::Map(m) = &row {
                     let mut new_map = m.borrow().clone();
-                    let is_null = match new_map.get(&col) {
-                        None | Some(Value::Nil) => true,
-                        _ => false,
-                    };
+                    let is_null = matches!(new_map.get(&col), None | Some(Value::Nil));
                     if is_null {
                         new_map.insert(col.clone(), default.clone());
                     }

@@ -26,7 +26,22 @@ pub struct Environment {
     /// Shared slot name list (Rc — zero-cost to clone between calls).
     slot_names: Option<Rc<Vec<String>>>,
     /// Saved frames from outer function calls.
+    #[allow(clippy::type_complexity)]
     slot_stack: Vec<(Vec<Value>, Option<Rc<Vec<String>>>)>,
+    /// Pool of reusable slot frame Vecs (avoids heap allocation on every call).
+    slot_pool: Vec<Vec<Value>>,
+    /// Current function call depth (for stack overflow protection).
+    pub call_depth: usize,
+    /// Instruction counter (for infinite loop detection).
+    pub instruction_count: u64,
+    /// Maximum instruction limit.
+    pub max_instructions: u64,
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Environment {
@@ -38,6 +53,10 @@ impl Environment {
             local_slots: Vec::new(),
             slot_names: None,
             slot_stack: Vec::with_capacity(16),
+            slot_pool: Vec::with_capacity(8),
+            call_depth: 0,
+            instruction_count: 0,
+            max_instructions: 100_000_000,
         }
     }
 
@@ -48,28 +67,47 @@ impl Environment {
     // ── Slot-indexed operations (fast path) ──────────────
 
     /// Push a new slot frame with Rc<Vec<String>> name list.
-    /// The Rc clone is just a pointer bump — zero allocation.
+    /// Reuses pooled Vec allocations to avoid heap churn on every call.
     #[inline(always)]
     pub fn push_slot_frame_named(&mut self, slot_count: usize, names: Rc<Vec<String>>) {
-        let old_slots = std::mem::replace(&mut self.local_slots, vec![Value::Nil; slot_count]);
-        let old_names = std::mem::replace(&mut self.slot_names, Some(names));
+        let new_slots = if let Some(mut pooled) = self.slot_pool.pop() {
+            pooled.clear();
+            pooled.resize(slot_count, Value::Nil);
+            pooled
+        } else {
+            vec![Value::Nil; slot_count]
+        };
+        let old_slots = std::mem::replace(&mut self.local_slots, new_slots);
+        let old_names = self.slot_names.replace(names);
         self.slot_stack.push((old_slots, old_names));
     }
 
     /// Push a slot frame without names (for compatibility).
     #[inline(always)]
     pub fn push_slot_frame(&mut self, slot_count: usize) {
-        let old_slots = std::mem::replace(&mut self.local_slots, vec![Value::Nil; slot_count]);
+        let new_slots = if let Some(mut pooled) = self.slot_pool.pop() {
+            pooled.clear();
+            pooled.resize(slot_count, Value::Nil);
+            pooled
+        } else {
+            vec![Value::Nil; slot_count]
+        };
+        let old_slots = std::mem::replace(&mut self.local_slots, new_slots);
         let old_names = self.slot_names.take();
         self.slot_stack.push((old_slots, old_names));
     }
 
     /// Pop the current slot frame, restoring the caller's frame.
+    /// Returns the used frame to the pool for reuse.
     #[inline(always)]
     pub fn pop_slot_frame(&mut self) {
         if let Some((old_slots, old_names)) = self.slot_stack.pop() {
-            self.local_slots = old_slots;
+            let used = std::mem::replace(&mut self.local_slots, old_slots);
             self.slot_names = old_names;
+            // Pool the used vec if pool isn't too large
+            if self.slot_pool.len() < 16 {
+                self.slot_pool.push(used);
+            }
         } else {
             self.local_slots.clear();
             self.slot_names = None;
@@ -229,6 +267,10 @@ impl Environment {
             local_slots: Vec::new(),
             slot_names: None,
             slot_stack: Vec::new(),
+            slot_pool: Vec::new(),
+            call_depth: self.call_depth,
+            instruction_count: self.instruction_count,
+            max_instructions: self.max_instructions,
         }
     }
 

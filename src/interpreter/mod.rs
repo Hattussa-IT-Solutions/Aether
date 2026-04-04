@@ -17,6 +17,7 @@ pub fn interpret(program: &Program, env: &mut Environment) -> Result<(), String>
     // Run the resolver to assign slot indices for fast variable access
     let slot_map = resolver::resolve(program);
     eval::set_slot_map(slot_map);
+    eval::reset_execution_counters(env);
 
     match exec::exec_block(&program.statements, env) {
         Ok(()) => Ok(()),
@@ -188,6 +189,7 @@ pub fn register_builtins(env: &mut Environment) {
 }
 
 fn register_math_builtins(env: &mut Environment) {
+    #[allow(clippy::type_complexity)]
     let math_fns: Vec<(&str, Box<dyn Fn(Vec<Value>) -> Result<Value, String>>)> = vec![
         ("sqrt", Box::new(|a| Ok(Value::Float(a[0].as_float().unwrap_or(0.0).sqrt())))),
         ("abs", Box::new(|a| match &a[0] {

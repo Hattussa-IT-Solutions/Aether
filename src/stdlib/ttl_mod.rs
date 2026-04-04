@@ -9,6 +9,7 @@ use crate::interpreter::values::*;
 // Each entry: (serialized_value: String, created_at: Instant, ttl: Duration)
 // Value contains Rc<> which is !Send, so we serialize to String for static storage.
 
+#[allow(clippy::type_complexity)]
 static TTL_STORE: Mutex<Option<HashMap<String, (String, Instant, Duration)>>> = Mutex::new(None);
 
 // ── MAP_IDS registry for cleanup tracking ────────────────────────

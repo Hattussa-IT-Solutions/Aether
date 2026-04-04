@@ -30,6 +30,18 @@ fn main() {
 
     match args[1].as_str() {
         "run" => {
+            // Parse --max-instructions flag
+            if let Some(pos) = args.iter().position(|a| a.starts_with("--max-instructions")) {
+                let limit: u64 = if args[pos].contains('=') {
+                    args[pos].split('=').nth(1).and_then(|v| v.parse().ok()).unwrap_or(interpreter::eval::DEFAULT_MAX_INSTRUCTIONS)
+                } else if pos + 1 < args.len() {
+                    args[pos + 1].parse().unwrap_or(interpreter::eval::DEFAULT_MAX_INSTRUCTIONS)
+                } else {
+                    interpreter::eval::DEFAULT_MAX_INSTRUCTIONS
+                };
+                interpreter::eval::set_max_instructions(limit);
+            }
+
             if args.len() < 3 {
                 // If aether.toml exists, run src/main.ae
                 if std::path::Path::new("aether.toml").exists() && std::path::Path::new("src/main.ae").exists() {
@@ -75,7 +87,13 @@ fn main() {
                 process::exit(1);
             }
             let dev = args.iter().any(|a| a == "--dev");
-            let pkg = args.iter().find(|a| !a.starts_with('-') && *a != "add").unwrap();
+            let pkg = match args.iter().skip(2).find(|a| !a.starts_with('-')) {
+                Some(p) => p,
+                None => {
+                    eprintln!("Usage: aether add <package>[@version]");
+                    process::exit(1);
+                }
+            };
             if let Err(e) = forge::add_dependency(pkg, dev) {
                 eprintln!("Error: {}", e);
                 process::exit(1);

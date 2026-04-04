@@ -14,12 +14,7 @@ pub fn run_dap() {
     let mut runtime = DebugRuntime::new();
     let mut seq = 1;
 
-    loop {
-        // Read DAP message (Content-Length header + JSON body)
-        let msg = match read_dap_message(&mut reader) {
-            Ok(msg) => msg,
-            Err(_) => break,
-        };
+    while let Ok(msg) = read_dap_message(&mut reader) {
 
         let command = msg["command"].as_str().unwrap_or("");
         let request_seq = msg["seq"].as_i64().unwrap_or(0);
@@ -249,8 +244,8 @@ fn read_dap_message(reader: &mut impl BufRead) -> Result<Value, String> {
         reader.read_line(&mut header).map_err(|e| e.to_string())?;
         let header = header.trim();
         if header.is_empty() { break; }
-        if header.starts_with("Content-Length:") {
-            content_length = header[15..].trim().parse().unwrap_or(0);
+        if let Some(len_str) = header.strip_prefix("Content-Length:") {
+            content_length = len_str.trim().parse().unwrap_or(0);
         }
     }
 

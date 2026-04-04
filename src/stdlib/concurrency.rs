@@ -10,6 +10,7 @@ use crate::interpreter::values::*;
 
 static ATOMICS: Mutex<Option<HashMap<String, Arc<AtomicI64>>>> = Mutex::new(None);
 
+#[allow(clippy::type_complexity)]
 static CHANNELS: Mutex<Option<HashMap<String, (Option<mpsc::SyncSender<String>>, Arc<Mutex<mpsc::Receiver<String>>>)>>> = Mutex::new(None);
 
 static MUTEXES: Mutex<Option<HashMap<String, Arc<Mutex<String>>>>> = Mutex::new(None);
@@ -34,7 +35,7 @@ fn value_to_json_string(val: &Value) -> String {
         }
         Value::Nil => "{\"t\":\"n\"}".to_string(),
         Value::List(items) => {
-            let parts: Vec<String> = items.borrow().iter().map(|v| value_to_json_string(v)).collect();
+            let parts: Vec<String> = items.borrow().iter().map(value_to_json_string).collect();
             format!("{{\"t\":\"l\",\"v\":[{}]}}", parts.join(","))
         }
         Value::Map(map) => {
@@ -84,7 +85,7 @@ fn decode_json_value(j: &serde_json::Value) -> Value {
             Some("n") => return Value::Nil,
             Some("l") => {
                 if let Some(arr) = obj.get("v").and_then(|v| v.as_array()) {
-                    let items: Vec<Value> = arr.iter().map(|item| decode_json_value(item)).collect();
+                    let items: Vec<Value> = arr.iter().map(decode_json_value).collect();
                     return Value::List(Rc::new(RefCell::new(items)));
                 }
             }

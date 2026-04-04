@@ -10,6 +10,12 @@ pub struct Compiler {
     locals: Vec<HashMap<String, usize>>,
 }
 
+impl Default for Compiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Compiler {
     pub fn new() -> Self {
         let main_chunk = Chunk::new("main".to_string());

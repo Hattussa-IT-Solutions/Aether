@@ -1,0 +1,251 @@
+// Edge case tests: Control flow
+print("=== Control Flow Tests ===")
+
+// 1. Deeply nested if/else (10 levels)
+x = 55
+result = "unknown"
+if x > 0 {
+    if x > 10 {
+        if x > 20 {
+            if x > 30 {
+                if x > 40 {
+                    if x > 50 {
+                        if x > 60 {
+                            if x > 70 {
+                                if x > 80 {
+                                    if x > 90 {
+                                        result = "above 90"
+                                    } else {
+                                        result = "81-90"
+                                    }
+                                } else {
+                                    result = "71-80"
+                                }
+                            } else {
+                                result = "61-70"
+                            }
+                        } else {
+                            result = "51-60"
+                        }
+                    } else {
+                        result = "41-50"
+                    }
+                } else {
+                    result = "31-40"
+                }
+            } else {
+                result = "21-30"
+            }
+        } else {
+            result = "11-20"
+        }
+    } else {
+        result = "1-10"
+    }
+} else {
+    result = "non-positive"
+}
+print("nested if result (55):", result)
+
+// 2. Nested for loops (4 levels deep)
+count = 0
+for a in 0..5 {
+    for b in 0..5 {
+        for c in 0..5 {
+            for d in 0..5 {
+                count += 1
+            }
+        }
+    }
+}
+print("4-deep nested loops (5^4):", count)
+
+// Nested loops building a structure
+grid = []
+for i in 0..3 {
+    row = []
+    for j in 0..3 {
+        row.push(i * 3 + j)
+    }
+    grid.push(row)
+}
+print("grid:", grid)
+
+// 3. Match with many arms
+def classify_char(c) {
+    match c {
+        "a" -> "vowel"
+        "e" -> "vowel"
+        "i" -> "vowel"
+        "o" -> "vowel"
+        "u" -> "vowel"
+        "b" -> "consonant"
+        "c" -> "consonant"
+        "d" -> "consonant"
+        "f" -> "consonant"
+        "g" -> "consonant"
+        "h" -> "consonant"
+        "j" -> "consonant"
+        "k" -> "consonant"
+        "l" -> "consonant"
+        "m" -> "consonant"
+        "n" -> "consonant"
+        "p" -> "consonant"
+        "q" -> "consonant"
+        "r" -> "consonant"
+        "s" -> "consonant"
+        "t" -> "consonant"
+        "v" -> "consonant"
+        "w" -> "consonant"
+        "x" -> "consonant"
+        "y" -> "consonant"
+        "z" -> "consonant"
+        _ -> "other"
+    }
+}
+print("classify a:", classify_char("a"))
+print("classify b:", classify_char("b"))
+print("classify 1:", classify_char("1"))
+
+// Match with ranges
+def grade(score) {
+    match score {
+        0 -> "zero"
+        1..60 -> "F"
+        60..70 -> "D"
+        70..80 -> "C"
+        80..90 -> "B"
+        90..100 -> "A"
+        _ -> "invalid"
+    }
+}
+print("grade 0:", grade(0))
+print("grade 45:", grade(45))
+print("grade 75:", grade(75))
+print("grade 95:", grade(95))
+
+// 4. Break and next in nested loops
+// Find first pair that sums to target
+target = 15
+found_i = -1
+found_j = -1
+for:outer i in 0..10 {
+    for j in 0..10 {
+        if i + j == target {
+            found_i = i
+            found_j = j
+            break:outer
+        }
+    }
+}
+print("pair summing to 15:", found_i, found_j)
+
+// Next to skip iterations
+evens_only = []
+for i in 0..20 {
+    next if i % 2 != 0
+    evens_only.push(i)
+}
+print("evens only:", evens_only)
+
+// Break from inner loop only
+inner_breaks = 0
+for i in 0..5 {
+    for j in 0..100 {
+        if j >= 3 {
+            break
+        }
+        inner_breaks += 1
+    }
+}
+print("inner breaks (5*3):", inner_breaks)
+
+// Next with complex condition
+filtered = []
+for i in 0..50 {
+    next if i % 3 == 0
+    next if i % 7 == 0
+    filtered.push(i)
+}
+print("filtered count (not div by 3 or 7):", filtered.len())
+
+// 5. Loop-while with complex conditions
+counter = 0
+x = 1
+loop while x < 1000 and counter < 20 {
+    x = x * 2
+    counter += 1
+}
+print("loop while result:", x, "iterations:", counter)
+
+// Loop until
+val = 1
+loop {
+    val = val * 3
+} until val > 1000
+print("loop until:", val)
+
+// Loop N times
+sum = 0
+loop 100 times {
+    sum += 1
+}
+print("loop 100 times sum:", sum)
+
+// 6. If expression (ternary)
+a = 10
+label1 = if a > 5 then "big" else "small"
+label2 = if a > 100 then "huge" else "normal"
+print("ternary 1:", label1)
+print("ternary 2:", label2)
+
+// Nested ternary
+b = 50
+category = if b > 75 then "high" else if b > 25 then "medium" else "low"
+print("nested ternary:", category)
+
+// 7. For with enumerate
+items = ["alpha", "beta", "gamma", "delta"]
+for i, item in items {
+    print("  [{i}] {item}")
+}
+
+// 8. Comprehension with condition
+squares = [x ** 2 for x in 0..20 if x % 2 == 0]
+print("even squares:", squares)
+
+// 9. Complex nested control flow
+def find_primes(limit) {
+    primes = []
+    for n in 2..limit {
+        is_prime = true
+        for d in 2..n {
+            if d * d > n {
+                break
+            }
+            if n % d == 0 {
+                is_prime = false
+                break
+            }
+        }
+        if is_prime {
+            primes.push(n)
+        }
+    }
+    return primes
+}
+print("primes < 30:", find_primes(30))
+
+// 10. Early return from function
+def first_positive(items) {
+    for item in items {
+        if item > 0 {
+            return item
+        }
+    }
+    return nil
+}
+print("first positive:", first_positive([-3, -2, -1, 0, 1, 2, 3]))
+print("first positive (none):", first_positive([-3, -2, -1]))
+
+print("=== All control flow tests passed ===")

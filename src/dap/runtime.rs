@@ -29,6 +29,12 @@ pub struct StackFrame {
     pub variables: Vec<(String, String)>, // (name, value_string)
 }
 
+impl Default for DebugRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DebugRuntime {
     pub fn new() -> Self {
         let mut env = Environment::new();

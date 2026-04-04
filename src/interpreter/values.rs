@@ -18,7 +18,7 @@ static EXTENSIONS: Mutex<Option<HashMap<String, Vec<FuncDef>>>> = Mutex::new(Non
 pub fn register_extension(type_name: &str, methods: Vec<FuncDef>) {
     let mut guard = EXTENSIONS.lock().unwrap();
     let registry = guard.get_or_insert_with(HashMap::new);
-    let entry = registry.entry(type_name.to_string()).or_insert_with(Vec::new);
+    let entry = registry.entry(type_name.to_string()).or_default();
     entry.extend(methods);
 }
 

@@ -2,6 +2,7 @@ use std::rc::Rc;
 use crate::interpreter::values::*;
 
 pub fn register(env: &mut crate::interpreter::environment::Environment) {
+    #[allow(clippy::type_complexity)]
     let fns: Vec<(&str, Box<dyn Fn(Vec<Value>) -> Result<Value, String>>)> = vec![
         ("math_gcd", Box::new(|a| {
             let mut x = a[0].as_int().unwrap_or(0).abs();

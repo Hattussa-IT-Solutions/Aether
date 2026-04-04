@@ -1,3 +1,4 @@
+#[allow(clippy::needless_range_loop)]
 pub fn levenshtein(a: &str, b: &str) -> usize {
     let m = a.len(); let n = b.len();
     let mut dp = vec![vec![0usize; n+1]; m+1];

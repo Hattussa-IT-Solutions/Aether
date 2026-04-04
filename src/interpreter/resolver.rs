@@ -73,13 +73,10 @@ fn resolve_stmt(stmt: &Stmt, map: &mut SlotMap) {
             map.slots.insert(fd.name.clone(), var_map);
 
             // Resolve nested functions
-            match &fd.body {
-                FuncBody::Block(stmts) => {
-                    for s in stmts {
-                        resolve_stmt(s, map);
-                    }
+            if let FuncBody::Block(stmts) = &fd.body {
+                for s in stmts {
+                    resolve_stmt(s, map);
                 }
-                _ => {}
             }
         }
         StmtKind::ClassDef(cd) => {
@@ -121,13 +118,10 @@ fn resolve_stmt(stmt: &Stmt, map: &mut SlotMap) {
                     var_map.insert(param.name.clone(), idx);
                     idx += 1;
                 }
-                match &init_fn.body {
-                    FuncBody::Block(stmts) => {
-                        for s in stmts {
-                            collect_vars_stmt(s, &mut var_map, &mut idx);
-                        }
+                if let FuncBody::Block(stmts) = &init_fn.body {
+                    for s in stmts {
+                        collect_vars_stmt(s, &mut var_map, &mut idx);
                     }
-                    _ => {}
                 }
                 let init_key = format!("{}.init", cd.name);
                 map.counts.insert(init_key.clone(), idx);

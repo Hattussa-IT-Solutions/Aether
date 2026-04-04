@@ -39,7 +39,7 @@ fn value_to_json(val: &Value) -> String {
         Value::String(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
         Value::Nil => "null".to_string(),
         Value::List(items) => {
-            let parts: Vec<String> = items.borrow().iter().map(|v| value_to_json(v)).collect();
+            let parts: Vec<String> = items.borrow().iter().map(value_to_json).collect();
             format!("[{}]", parts.join(","))
         }
         Value::Map(map) => {
@@ -62,7 +62,7 @@ fn json_to_value(json: &serde_json::Value) -> Value {
         }
         serde_json::Value::String(s) => Value::String(s.clone()),
         serde_json::Value::Array(arr) => {
-            let items: Vec<Value> = arr.iter().map(|v| json_to_value(v)).collect();
+            let items: Vec<Value> = arr.iter().map(json_to_value).collect();
             Value::List(Rc::new(RefCell::new(items)))
         }
         serde_json::Value::Object(obj) => {

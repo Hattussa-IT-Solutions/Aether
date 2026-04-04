@@ -44,11 +44,23 @@ impl Parser {
                 continue;
             }
 
+            // Skip stray closing braces that may remain after error recovery
+            if matches!(self.peek_kind(), TokenKind::RBrace) {
+                self.advance();
+                self.skip_newlines();
+                continue;
+            }
+
+            let pos_before = self.pos;
             match self.parse_statement() {
                 Ok(stmt) => statements.push(stmt),
                 Err(e) => {
                     self.errors.push(e);
                     self.synchronize();
+                    // Ensure progress — if synchronize didn't advance, force advance
+                    if self.pos == pos_before && !self.is_at_end() {
+                        self.advance();
+                    }
                 }
             }
             self.skip_newlines();
@@ -1047,11 +1059,8 @@ impl Parser {
                         }
                         "scale" => {
                             self.advance();
-                            if self.match_token(&TokenKind::Dot) {
-                                scale = Some(self.expect_identifier()?);
-                            } else {
-                                scale = Some(self.expect_identifier()?);
-                            }
+                            let _ = self.match_token(&TokenKind::Dot);
+                            scale = Some(self.expect_identifier()?);
                         }
                         "when" => {
                             self.advance();
@@ -1206,7 +1215,8 @@ impl Parser {
                 Some(self.parse_type_annotation()?)
             } else { None };
 
-            let default_body = if { self.skip_newlines(); self.match_token(&TokenKind::LBrace) } {
+            let has_body = { self.skip_newlines(); self.match_token(&TokenKind::LBrace) };
+            let default_body = if has_body {
                 Some(self.parse_block()?)
             } else { None };
 
@@ -1266,7 +1276,8 @@ impl Parser {
         self.skip_newlines();
         self.expect(&TokenKind::LBrace)?;
         let then_block = self.parse_block()?;
-        let else_block = if { self.skip_newlines(); self.match_token(&TokenKind::Else) } {
+        let has_else = { self.skip_newlines(); self.match_token(&TokenKind::Else) };
+        let else_block = if has_else {
             self.skip_newlines();
             self.expect(&TokenKind::LBrace)?;
             Some(self.parse_block()?)
@@ -1382,7 +1393,6 @@ impl Parser {
             }
             // Literal patterns: numbers, strings, bools
             TokenKind::IntLiteral(n) => {
-                let n = n;
                 let span = self.current_span();
                 self.advance();
                 let lit_expr = Expr { kind: ExprKind::IntLiteral(n), span: span.clone() };
@@ -2493,7 +2503,7 @@ impl Parser {
             // Peek to see if this is a dimensional suffix (single lowercase identifier)
             if let Some(next) = self.tokens.get(self.pos + 1) {
                 if let TokenKind::Identifier(ref unit) = next.kind {
-                    if unit.chars().next().map_or(false, |c| c.is_lowercase()) {
+                    if unit.chars().next().is_some_and(|c| c.is_lowercase()) {
                         self.advance(); // .
                         let unit = self.expect_identifier()?;
                         ty = TypeAnnotation::Dimensional(Box::new(ty), unit);
