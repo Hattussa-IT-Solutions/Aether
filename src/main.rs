@@ -19,6 +19,7 @@ mod lsp;
 mod dap;
 mod debugger;
 mod watcher;
+mod convert;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -179,6 +180,38 @@ fn main() {
                 process::exit(1);
             }
             debugger::debugger::run_debugger(&args[2]);
+        }
+        "convert" => {
+            let is_project = args.iter().any(|a| a == "--project");
+            if is_project {
+                let input = args.iter().skip(2)
+                    .find(|a| !a.starts_with('-'))
+                    .map(|s| s.as_str())
+                    .unwrap_or(".");
+                let output = args.iter().position(|a| a == "--output")
+                    .and_then(|i| args.get(i + 1))
+                    .map(|s| s.as_str());
+                let output_dir = match output {
+                    Some(dir) => dir.to_string(),
+                    None => format!("{}_aether", input.trim_end_matches('/')),
+                };
+                match convert::project::convert_project(input, &output_dir) {
+                    Ok(report) => { println!("{}", report.summary()); }
+                    Err(e) => { eprintln!("Error: {}", e); process::exit(1); }
+                }
+            } else {
+                // Single file conversion
+                if args.len() < 3 {
+                    eprintln!("Usage: aether convert <file.py>");
+                    eprintln!("       aether convert --project <dir> [--output <dir>]");
+                    process::exit(1);
+                }
+                let input = &args[2];
+                match convert::python::convert_file(input) {
+                    Ok(output) => print!("{}", output),
+                    Err(e) => { eprintln!("Error: {}", e); process::exit(1); }
+                }
+            }
         }
         "--version" | "-V" => {
             println!("aether {}", env!("CARGO_PKG_VERSION"));
@@ -358,6 +391,10 @@ fn print_usage() {
     eprintln!("  build              Parse and type-check project");
     eprintln!("  test [dir]         Run test files");
     eprintln!("  fmt <file.ae>      Format source code");
+    eprintln!();
+    eprintln!("Conversion:");
+    eprintln!("  convert <file.py>                  Convert a Python file to Aether");
+    eprintln!("  convert --project <dir> [--output]  Convert a Python project");
     eprintln!();
     eprintln!("Tools:");
     eprintln!("  check <file.ae>    Type-check a file");
