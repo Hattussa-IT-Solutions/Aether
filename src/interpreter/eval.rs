@@ -41,6 +41,7 @@ pub fn set_max_instructions(limit: u64) {
 #[inline(always)]
 fn enter_call(env: &mut Environment) -> Result<(), Signal> {
     env.call_depth += 1;
+    env.profile_function_calls += 1;
     if env.call_depth > MAX_CALL_DEPTH {
         Err(Signal::Throw(Value::String(format!(
             "Stack overflow: maximum recursion depth ({}) exceeded. \
@@ -103,6 +104,7 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
 
         // ── Identifiers ──────────────────────────────────
         ExprKind::Identifier(name) => {
+            env.profile_var_lookups += 1;
             // FAST PATH: check slot frame first (direct array index)
             if env.has_slots() {
                 if let Some(idx) = env.find_slot(name) {
@@ -330,6 +332,16 @@ pub fn eval_expr(expr: &Expr, env: &mut Environment) -> Result<Value, Signal> {
                 name: "<lambda>".to_string(),
                 params: params.clone(),
                 body: FuncBody::Expression((**body).clone()),
+                closure_env: Some(Rc::new(RefCell::new(env.snapshot()))),
+                is_method: false, slot_names: std::cell::RefCell::new(None),
+            })))
+        }
+
+        ExprKind::BlockLambda { params, body } => {
+            Ok(Value::Function(Rc::new(FunctionValue {
+                name: "<lambda>".to_string(),
+                params: params.clone(),
+                body: FuncBody::Block(body.clone()),
                 closure_env: Some(Rc::new(RefCell::new(env.snapshot()))),
                 is_method: false, slot_names: std::cell::RefCell::new(None),
             })))

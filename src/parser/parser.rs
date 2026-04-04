@@ -245,14 +245,17 @@ impl Parser {
             self.skip_newlines();
         }
 
+        // Handle access modifiers (pub/priv/prot) before statements
+        let access = self.parse_access_modifier();
+
         let kind = match self.peek_kind().clone() {
             TokenKind::Let => self.parse_let_decl()?,
             TokenKind::Const => self.parse_const_decl()?,
-            TokenKind::Def => self.parse_func_def(false, false, decorators.clone(), AccessModifier::Pub)?,
+            TokenKind::Def => self.parse_func_def(false, false, decorators.clone(), access)?,
             TokenKind::Async => {
                 self.advance();
                 if matches!(self.peek_kind(), TokenKind::Def) {
-                    self.parse_func_def(true, false, decorators.clone(), AccessModifier::Pub)?
+                    self.parse_func_def(true, false, decorators.clone(), access)?
                 } else {
                     return Err(self.error("expected 'def' after 'async'".into()));
                 }
@@ -1325,6 +1328,10 @@ impl Parser {
             self.skip_newlines();
             let body = if self.match_token(&TokenKind::LBrace) {
                 MatchBody::Block(self.parse_block()?)
+            } else if matches!(self.peek_kind(), TokenKind::Return | TokenKind::Throw | TokenKind::Break | TokenKind::Next) {
+                // Allow statement-like expressions in match arms
+                let stmt = self.parse_statement()?;
+                MatchBody::Block(vec![stmt])
             } else {
                 MatchBody::Expression(self.parse_expression(0)?)
             };
@@ -2013,6 +2020,26 @@ impl Parser {
                 Ok(Expr { kind: ExprKind::Unary { op, operand: Box::new(operand) }, span })
             }
 
+            // Anonymous def expression: def(params) { body }
+            TokenKind::Def if matches!(self.tokens.get(self.pos + 1).map(|t| &t.kind), Some(TokenKind::LParen)) => {
+                self.advance(); // consume 'def'
+                self.expect(&TokenKind::LParen)?;
+                let params = self.parse_params()?;
+                self.expect(&TokenKind::RParen)?;
+                let _return_type = if self.match_token(&TokenKind::Arrow) {
+                    Some(self.parse_type_annotation()?)
+                } else { None };
+                self.skip_newlines();
+                let body = if self.match_token(&TokenKind::LBrace) {
+                    let stmts = self.parse_block()?;
+                    ExprKind::BlockLambda { params: params.clone(), body: stmts }
+                } else {
+                    let expr = self.parse_expression(0)?;
+                    ExprKind::Lambda { params: params.clone(), body: Box::new(expr) }
+                };
+                Ok(Expr { kind: body, span })
+            }
+
             // Await
             TokenKind::Await => {
                 self.advance();
@@ -2223,8 +2250,8 @@ impl Parser {
                 Ok(Expr { kind: ExprKind::EvolveBlock { target, config }, span })
             }
 
-            // Crossover
-            TokenKind::Crossover => {
+            // Crossover — only when followed by '('
+            TokenKind::Crossover if matches!(self.tokens.get(self.pos + 1).map(|t| &t.kind), Some(TokenKind::LParen)) => {
                 self.advance();
                 self.expect(&TokenKind::LParen)?;
                 let a = self.parse_expression(0)?;
@@ -2234,8 +2261,8 @@ impl Parser {
                 Ok(Expr { kind: ExprKind::Crossover { parent_a: Box::new(a), parent_b: Box::new(b) }, span })
             }
 
-            // Breed
-            TokenKind::Breed => {
+            // Breed — only when followed by '(', otherwise treat as identifier
+            TokenKind::Breed if matches!(self.tokens.get(self.pos + 1).map(|t| &t.kind), Some(TokenKind::LParen)) => {
                 self.advance();
                 self.expect(&TokenKind::LParen)?;
                 let a = self.parse_expression(0)?;

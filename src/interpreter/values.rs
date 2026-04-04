@@ -334,6 +334,12 @@ impl Value {
             (Value::Tuple(a), Value::Tuple(b)) => {
                 a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.equals(y))
             }
+            // Deep equality for maps
+            (Value::Map(a), Value::Map(b)) => {
+                let a = a.borrow();
+                let b = b.borrow();
+                a.len() == b.len() && a.iter().all(|(k, v)| b.get(k).is_some_and(|bv| v.equals(bv)))
+            }
             // Deep equality for sets
             (Value::Set(a), Value::Set(b)) => {
                 let a = a.borrow();

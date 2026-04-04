@@ -36,6 +36,12 @@ pub struct Environment {
     pub instruction_count: u64,
     /// Maximum instruction limit.
     pub max_instructions: u64,
+    /// Profiling: function calls count.
+    pub profile_function_calls: u64,
+    /// Profiling: variable lookups count.
+    pub profile_var_lookups: u64,
+    /// Profiling enabled flag.
+    pub profiling: bool,
 }
 
 impl Default for Environment {
@@ -57,6 +63,9 @@ impl Environment {
             call_depth: 0,
             instruction_count: 0,
             max_instructions: 100_000_000,
+            profile_function_calls: 0,
+            profile_var_lookups: 0,
+            profiling: false,
         }
     }
 
@@ -271,6 +280,9 @@ impl Environment {
             call_depth: self.call_depth,
             instruction_count: self.instruction_count,
             max_instructions: self.max_instructions,
+            profile_function_calls: self.profile_function_calls,
+            profile_var_lookups: self.profile_var_lookups,
+            profiling: self.profiling,
         }
     }
 

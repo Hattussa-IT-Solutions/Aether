@@ -53,12 +53,18 @@ fn main() {
             } else {
                 let use_vm = args.iter().any(|a| a == "--vm");
                 let use_watch = args.iter().any(|a| a == "--watch");
+                let use_profile = args.iter().any(|a| a == "--profile");
+                // Find the .ae file argument (skip flags)
+                let file = args.iter().skip(2)
+                    .find(|a| !a.starts_with('-'))
+                    .map(|s| s.as_str())
+                    .unwrap_or(&args[2]);
                 if use_watch {
-                    watcher::run_with_watch(&args[2]);
+                    watcher::run_with_watch(file);
                 } else if use_vm {
-                    run_file_vm(&args[2]);
+                    run_file_vm(file);
                 } else {
-                    run_file(&args[2]);
+                    run_file_with_options(file, use_profile);
                 }
             }
         }
@@ -193,6 +199,10 @@ fn main() {
 }
 
 fn run_file(filename: &str) {
+    run_file_with_options(filename, false);
+}
+
+fn run_file_with_options(filename: &str, profile: bool) {
     let source = match fs::read_to_string(filename) {
         Ok(s) => s,
         Err(e) => {
@@ -220,10 +230,27 @@ fn run_file(filename: &str) {
     // Interpret
     let mut env = interpreter::environment::Environment::new();
     interpreter::register_builtins(&mut env);
+    env.profiling = profile;
 
-    if let Err(e) = interpreter::interpret(&program, &mut env) {
+    let start = std::time::Instant::now();
+    let result = interpreter::interpret(&program, &mut env);
+    let elapsed = start.elapsed();
+
+    if let Err(e) = result {
         eprintln!("{}", e);
         process::exit(1);
+    }
+
+    if profile {
+        eprintln!("\n=== Profile ===");
+        eprintln!("Total time:          {:.1}ms", elapsed.as_secs_f64() * 1000.0);
+        eprintln!("Instructions:        {}", env.instruction_count);
+        eprintln!("Function calls:      {}", env.profile_function_calls);
+        eprintln!("Variable lookups:    {}", env.profile_var_lookups);
+        if env.instruction_count > 0 {
+            let ns_per = (elapsed.as_nanos() as f64) / (env.instruction_count as f64);
+            eprintln!("Time per instruction: {:.0}ns", ns_per);
+        }
     }
 }
 

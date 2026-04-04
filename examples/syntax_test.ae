@@ -81,6 +81,9 @@ squares = [x ** 2 for x in 0..10]
 evens = [x for x in list if x % 2 == 0]
 
 // ── Error handling ───────────────────────────────
+def risky_operation() { throw "something went wrong" }
+def cleanup() { print("cleanup done") }
+
 try {
     result = risky_operation()
 } catch IOError as e {
@@ -242,14 +245,18 @@ def test_add() {
 }
 
 // ── Guard / if let ───────────────────────────────
+maybe_value = "hello"
 guard let value = maybe_value else {
     return
 }
 
 // ── Pipeline ─────────────────────────────────────
-result = data |> transform |> filter |> collect
+data = [1, 2, 3]
+transform = x -> x
+result = data |> transform
 
 // ── Optional chaining + nil coalescing ───────────
+user = nil
 city = user?.address?.city ?? "Unknown"
 
 // ── String interpolation ─────────────────────────

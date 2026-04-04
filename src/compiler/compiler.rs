@@ -73,6 +73,117 @@ impl Compiler {
                 }
                 self.current().emit(OpCode::Return);
             }
+            StmtKind::Assignment { target, op, value } => {
+                if let ExprKind::Identifier(name) = &target.kind {
+                    match op {
+                        AssignOp::Assign => {
+                            self.compile_expr(value);
+                            self.current().emit(OpCode::StoreGlobal(name.clone()));
+                        }
+                        _ => {
+                            // Compound assignment: load, compute, store
+                            self.current().emit(OpCode::LoadGlobal(name.clone()));
+                            self.compile_expr(value);
+                            let opcode = match op {
+                                AssignOp::AddAssign => OpCode::Add,
+                                AssignOp::SubAssign => OpCode::Sub,
+                                AssignOp::MulAssign => OpCode::Mul,
+                                AssignOp::DivAssign => OpCode::Div,
+                                AssignOp::ModAssign => OpCode::Mod,
+                                AssignOp::PowAssign => OpCode::Pow,
+                                _ => OpCode::Add,
+                            };
+                            self.current().emit(opcode);
+                            self.current().emit(OpCode::StoreGlobal(name.clone()));
+                        }
+                    }
+                }
+            }
+            StmtKind::ForLoop { pattern, iterable, body, .. } => {
+                // Handle range-based for loop: for i in start..end { body }
+                if let ExprKind::Range { start, end, inclusive, .. } = &iterable.kind {
+                    if let ForPattern::Single(var_name) = pattern {
+                        // Compile start value and store as loop variable
+                        self.compile_expr(start);
+                        self.current().emit(OpCode::StoreGlobal(var_name.clone()));
+
+                        // Loop header: check condition
+                        let loop_start = self.current().code.len();
+                        self.current().emit(OpCode::LoadGlobal(var_name.clone()));
+                        self.compile_expr(end);
+                        let cmp_op = if *inclusive { OpCode::Gt } else { OpCode::Ge };
+                        self.current().emit(cmp_op);
+                        let exit_jump = self.current().emit(OpCode::JumpIfTrue(0));
+
+                        // Body
+                        for s in body { self.compile_stmt(s); }
+
+                        // Increment: var += 1
+                        self.current().emit(OpCode::LoadGlobal(var_name.clone()));
+                        let one = self.current().add_constant(Constant::Int(1));
+                        self.current().emit(OpCode::LoadConst(one));
+                        self.current().emit(OpCode::Add);
+                        self.current().emit(OpCode::StoreGlobal(var_name.clone()));
+
+                        // Jump back to loop header
+                        self.current().emit(OpCode::Loop(loop_start));
+
+                        // Patch exit jump
+                        self.current().patch_jump(exit_jump);
+                    }
+                }
+            }
+            StmtKind::Loop { kind, body, .. } => {
+                match kind {
+                    LoopKind::Times(count_expr) => {
+                        // Compile count, store as __loop_counter
+                        let counter = "__loop_counter".to_string();
+                        let idx_var = "__loop_idx".to_string();
+                        self.compile_expr(count_expr);
+                        self.current().emit(OpCode::StoreGlobal(counter.clone()));
+                        let zero = self.current().add_constant(Constant::Int(0));
+                        self.current().emit(OpCode::LoadConst(zero));
+                        self.current().emit(OpCode::StoreGlobal(idx_var.clone()));
+
+                        let loop_start = self.current().code.len();
+                        self.current().emit(OpCode::LoadGlobal(idx_var.clone()));
+                        self.current().emit(OpCode::LoadGlobal(counter.clone()));
+                        self.current().emit(OpCode::Ge);
+                        let exit_jump = self.current().emit(OpCode::JumpIfTrue(0));
+
+                        for s in body { self.compile_stmt(s); }
+
+                        // idx += 1
+                        self.current().emit(OpCode::LoadGlobal(idx_var.clone()));
+                        let one = self.current().add_constant(Constant::Int(1));
+                        self.current().emit(OpCode::LoadConst(one));
+                        self.current().emit(OpCode::Add);
+                        self.current().emit(OpCode::StoreGlobal(idx_var.clone()));
+
+                        self.current().emit(OpCode::Loop(loop_start));
+                        self.current().patch_jump(exit_jump);
+                    }
+                    LoopKind::While(cond_expr) => {
+                        let loop_start = self.current().code.len();
+                        self.compile_expr(cond_expr);
+                        let exit_jump = self.current().emit(OpCode::JumpIfFalse(0));
+                        for s in body { self.compile_stmt(s); }
+                        self.current().emit(OpCode::Loop(loop_start));
+                        self.current().patch_jump(exit_jump);
+                    }
+                    LoopKind::Infinite => {
+                        let loop_start = self.current().code.len();
+                        for s in body { self.compile_stmt(s); }
+                        self.current().emit(OpCode::Loop(loop_start));
+                    }
+                }
+            }
+            StmtKind::FuncDef(fd) => {
+                // For now, store function as a no-op global marker
+                // Full function compilation would need call frames
+                self.current().emit(OpCode::PushNil);
+                self.current().emit(OpCode::StoreGlobal(fd.name.clone()));
+            }
             _ => {
                 // Other statements — fall through for now
             }
