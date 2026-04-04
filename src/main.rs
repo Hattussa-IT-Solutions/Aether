@@ -330,7 +330,7 @@ fn run_file_vm(filename: &str) {
     let chunks = comp.compile_program(&program);
 
     let mut vm = compiler::vm::VM::new();
-    if let Err(e) = vm.execute(&chunks[0]) {
+    if let Err(e) = vm.execute_all(&chunks) {
         eprintln!("VM error: {}", e);
         process::exit(1);
     }

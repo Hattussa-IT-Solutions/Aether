@@ -21,7 +21,13 @@ pub fn interpret(program: &Program, env: &mut Environment) -> Result<(), String>
 
     match exec::exec_block(&program.statements, env) {
         Ok(()) => Ok(()),
-        Err(Signal::Throw(val)) => Err(format!("Unhandled error: {}", val)),
+        Err(Signal::Throw(val)) => {
+            // Annotate with source location from the last executed statement
+            let location = exec::LAST_STMT_SPAN.with(|s| {
+                s.borrow().as_ref().filter(|sp| sp.line > 0).map(|sp| format!(" [at {}:{}]", sp.file, sp.line))
+            });
+            Err(format!("Unhandled error: {}{}", val, location.unwrap_or_default()))
+        }
         Err(Signal::Return(val)) => {
             if !matches!(val, Value::Nil) {
                 println!("{}", val);

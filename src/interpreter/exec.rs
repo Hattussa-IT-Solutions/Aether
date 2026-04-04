@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -51,8 +52,18 @@ pub fn exec_block_with_value(stmts: &[Stmt], env: &mut Environment) -> Result<Va
     Ok(last_val)
 }
 
-/// Execute a single statement.
+// Track last statement span for error reporting.
+thread_local! {
+    pub static LAST_STMT_SPAN: RefCell<Option<crate::lexer::tokens::Span>> = const { RefCell::new(None) };
+}
+
 pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
+    // Track the current statement for error reporting
+    LAST_STMT_SPAN.with(|s| *s.borrow_mut() = Some(stmt.span.clone()));
+    exec_stmt_inner(stmt, env)
+}
+
+fn exec_stmt_inner(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
     match &stmt.kind {
         StmtKind::Expression(expr) => {
             eval_expr(expr, env)?;
@@ -87,11 +98,18 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
         }
 
         StmtKind::FuncDef(fd) => {
+            // Capture enclosing scope if we're inside another function (nested def).
+            // Top-level functions don't need closure capture.
+            let closure = if env.has_slots() || env.depth() > 1 {
+                Some(Rc::new(std::cell::RefCell::new(env.snapshot())))
+            } else {
+                None
+            };
             let func = Value::Function(Rc::new(FunctionValue {
                 name: fd.name.clone(),
                 params: fd.params.clone(),
                 body: fd.body.clone(),
-                closure_env: None,
+                closure_env: closure,
                 is_method: false, slot_names: std::cell::RefCell::new(None),
             }));
             env.define(&fd.name, func);
@@ -449,8 +467,63 @@ pub fn exec_stmt(stmt: &Stmt, env: &mut Environment) -> Result<(), Signal> {
                 }
             }
 
-            // Default: register as a namespace string
-            env.define(name, Value::String(format!("module:{}", path.join("."))));
+            // Known stdlib modules — register as namespace
+            let known_stdlib = [
+                "fs", "io", "json", "math", "net", "time", "random", "crypto",
+                "regex", "db", "os", "sys", "http", "set", "iter", "log",
+                "data", "viz", "tensor", "concurrency", "ttl",
+            ];
+            let first = path.first().map(|s| s.as_str()).unwrap_or("");
+            if known_stdlib.contains(&first) || path.join(".").starts_with("net.") {
+                env.define(name, Value::String(format!("module:{}", path.join("."))));
+                return Ok(());
+            }
+
+            // File-based import: try to load path as .ae file
+            // Convert dot path to file path: "lib.helpers" -> "lib/helpers.ae"
+            let file_path = format!("{}.ae", path.join("/"));
+            if let Ok(source) = std::fs::read_to_string(&file_path) {
+                // Lex, parse, and execute the module file
+                let mut scanner = crate::lexer::scanner::Scanner::new(&source, file_path.clone());
+                let tokens = scanner.scan_tokens();
+                let mut parser = crate::parser::parser::Parser::new(tokens);
+                match parser.parse_program() {
+                    Ok(program) => {
+                        // Execute module in a sub-environment that shares globals
+                        let mut mod_env = env.global_only();
+                        crate::interpreter::register_builtins(&mut mod_env);
+                        let slot_map = crate::interpreter::resolver::resolve(&program);
+                        crate::interpreter::eval::set_slot_map(slot_map);
+                        match exec_block(&program.statements, &mut mod_env) {
+                            Ok(()) => {}
+                            Err(Signal::Return(_)) => {}
+                            Err(e) => return Err(e),
+                        }
+                        // Import all globals from the module into a map
+                        let mut exports = std::collections::HashMap::new();
+                        for (k, v) in &mod_env.globals {
+                            // Skip builtins (functions registered by register_builtins)
+                            if !env.globals.contains_key(k) {
+                                exports.insert(k.clone(), v.clone());
+                                // Also define directly in the calling env
+                                env.define(k, v.clone());
+                            }
+                        }
+                        // Define the module name as a map of exports
+                        let map = Rc::new(std::cell::RefCell::new(exports));
+                        env.define(name, Value::Map(map));
+                    }
+                    Err(errors) => {
+                        let msgs: Vec<String> = errors.iter().map(|e| format!("{}", e)).collect();
+                        return Err(Signal::Throw(Value::String(
+                            format!("parse error in module '{}': {}", file_path, msgs.join(", "))
+                        )));
+                    }
+                }
+            } else {
+                // Not a file — register as namespace string (for forward compatibility)
+                env.define(name, Value::String(format!("module:{}", path.join("."))));
+            }
             Ok(())
         }
 

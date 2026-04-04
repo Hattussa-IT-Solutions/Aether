@@ -81,6 +81,8 @@ pub enum Constant {
     Str(String),
     Bool(bool),
     Nil,
+    /// Reference to a compiled function (chunk index, param count).
+    Function(usize, usize),
 }
 
 /// A compiled function chunk.
@@ -90,6 +92,7 @@ pub struct Chunk {
     pub code: Vec<OpCode>,
     pub constants: Vec<Constant>,
     pub local_count: usize,
+    pub param_count: usize,
 }
 
 impl Chunk {
@@ -99,6 +102,7 @@ impl Chunk {
             code: Vec::new(),
             constants: Vec::new(),
             local_count: 0,
+            param_count: 0,
         }
     }
 

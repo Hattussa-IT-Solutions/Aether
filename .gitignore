@@ -9,3 +9,4 @@ Thumbs.db
 node_modules/
 *.vsix
 aether-vscode/out/
+*.pyc

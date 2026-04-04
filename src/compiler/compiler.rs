@@ -38,6 +38,35 @@ impl Compiler {
         &mut self.chunks[self.current_chunk]
     }
 
+    /// Emit a load instruction for a variable (local if in function, otherwise global).
+    fn emit_load(&mut self, name: &str) {
+        if let Some(locals) = self.locals.last() {
+            if let Some(&idx) = locals.get(name) {
+                self.current().emit(OpCode::LoadLocal(idx));
+                return;
+            }
+        }
+        self.current().emit(OpCode::LoadGlobal(name.to_string()));
+    }
+
+    /// Emit a store instruction for a variable (local if in function, otherwise global).
+    fn emit_store(&mut self, name: &str) {
+        if self.current_chunk != 0 {
+            // Check if already a local
+            if let Some(&idx) = self.locals.last().unwrap().get(name) {
+                self.chunks[self.current_chunk].emit(OpCode::StoreLocal(idx));
+                return;
+            }
+            // New local in function
+            let idx = self.chunks[self.current_chunk].local_count;
+            self.chunks[self.current_chunk].local_count += 1;
+            self.locals.last_mut().unwrap().insert(name.to_string(), idx);
+            self.chunks[self.current_chunk].emit(OpCode::StoreLocal(idx));
+        } else {
+            self.chunks[self.current_chunk].emit(OpCode::StoreGlobal(name.to_string()));
+        }
+    }
+
     fn compile_stmt(&mut self, stmt: &Stmt) {
         match &stmt.kind {
             StmtKind::Expression(expr) => {
@@ -50,7 +79,7 @@ impl Compiler {
                 } else {
                     self.current().emit(OpCode::PushNil);
                 }
-                self.current().emit(OpCode::StoreGlobal(name.clone()));
+                self.emit_store(name);
             }
             StmtKind::If { condition, then_block, else_block, .. } => {
                 self.compile_expr(condition);
@@ -78,11 +107,11 @@ impl Compiler {
                     match op {
                         AssignOp::Assign => {
                             self.compile_expr(value);
-                            self.current().emit(OpCode::StoreGlobal(name.clone()));
+                            self.emit_store(name);
                         }
                         _ => {
                             // Compound assignment: load, compute, store
-                            self.current().emit(OpCode::LoadGlobal(name.clone()));
+                            self.emit_load(name);
                             self.compile_expr(value);
                             let opcode = match op {
                                 AssignOp::AddAssign => OpCode::Add,
@@ -94,7 +123,7 @@ impl Compiler {
                                 _ => OpCode::Add,
                             };
                             self.current().emit(opcode);
-                            self.current().emit(OpCode::StoreGlobal(name.clone()));
+                            self.emit_store(name);
                         }
                     }
                 }
@@ -179,9 +208,45 @@ impl Compiler {
                 }
             }
             StmtKind::FuncDef(fd) => {
-                // For now, store function as a no-op global marker
-                // Full function compilation would need call frames
-                self.current().emit(OpCode::PushNil);
+                // Compile function body into a new chunk
+                let mut func_chunk = Chunk::new(fd.name.clone());
+                func_chunk.param_count = fd.params.len();
+
+                // Build local variable map for params
+                let mut func_locals = HashMap::new();
+                for (i, param) in fd.params.iter().enumerate() {
+                    func_locals.insert(param.name.clone(), i);
+                }
+                func_chunk.local_count = fd.params.len();
+
+                // Save current state, switch to function chunk
+                let func_chunk_idx = self.chunks.len();
+                self.chunks.push(func_chunk);
+                let saved_chunk = self.current_chunk;
+                let saved_locals = std::mem::replace(&mut self.locals, vec![func_locals]);
+                self.current_chunk = func_chunk_idx;
+
+                // Compile the body
+                if let FuncBody::Block(stmts) = &fd.body {
+                    for s in stmts { self.compile_stmt(s); }
+                } else if let FuncBody::Expression(expr) = &fd.body {
+                    self.compile_expr(expr);
+                    self.current().emit(OpCode::Return);
+                }
+                // Ensure function ends with a return
+                let code_len = self.chunks[func_chunk_idx].code.len();
+                if code_len == 0 || !matches!(self.chunks[func_chunk_idx].code[code_len - 1], OpCode::Return) {
+                    self.chunks[func_chunk_idx].emit(OpCode::PushNil);
+                    self.chunks[func_chunk_idx].emit(OpCode::Return);
+                }
+
+                // Restore state
+                self.current_chunk = saved_chunk;
+                self.locals = saved_locals;
+
+                // Store function reference as a constant
+                let const_idx = self.current().add_constant(Constant::Function(func_chunk_idx, fd.params.len()));
+                self.current().emit(OpCode::LoadConst(const_idx));
                 self.current().emit(OpCode::StoreGlobal(fd.name.clone()));
             }
             _ => {
@@ -208,6 +273,13 @@ impl Compiler {
             ExprKind::BoolLiteral(false) => { self.current().emit(OpCode::PushFalse); }
             ExprKind::NilLiteral => { self.current().emit(OpCode::PushNil); }
             ExprKind::Identifier(name) => {
+                // Check locals first (function parameters and local vars)
+                if let Some(locals) = self.locals.last() {
+                    if let Some(&idx) = locals.get(name.as_str()) {
+                        self.current().emit(OpCode::LoadLocal(idx));
+                        return;
+                    }
+                }
                 self.current().emit(OpCode::LoadGlobal(name.clone()));
             }
             ExprKind::Binary { left, op, right } => {
